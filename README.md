@@ -1,5 +1,5 @@
 ###DESCRIPTION
-Ensemble de Scripts pour [Blood Wars](http://www.fr.bloodwars.net) où vous incarnez un vampire dans un monde post-apocalyptique :
+Ensemble de Userscripts pour [Blood Wars](http://www.fr.bloodwars.net) où vous incarnez un vampire dans un monde post-apocalyptique :
 * [BloodWarsEnchanced](https://github.com/Ecilam/BloodWarsEnhanced)
 * [BloodWarsAnalyseRC](https://github.com/Ecilam/BloodWarsAnalyseRC) (celui-ci)
 * [BloodWarsSpyData](https://github.com/Ecilam/BloodWarsSpyData)
@@ -23,7 +23,8 @@ Analyse les combats (embuscades, expéditions, sièges...) et délivre 3 tableau
 
 Un clic sur le titre du tableau permet de l'afficher/masquer.
 
+Ajoute aussi un total des "dommages/tués" dans la partie "RESULTAT DU DUEL".
+
 ###INFORMATIONS
 * **1ère utilisation:** un message vous rappellera de consulter la Salle du Trône pour que le script puisse récupérer l'IUD du personnage afin de pouvoir fonctionner.
 * **Données:** les préférences sont stockées avec LOCALSTORAGE.
-
