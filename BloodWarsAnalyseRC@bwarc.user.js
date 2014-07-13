@@ -3,7 +3,7 @@
 // ==UserScript==
 // @author		Ecilam
 // @name		Blood Wars Analyse RC
-// @version		2014.07.11
+// @version		2014.07.13
 // @namespace	BWARC
 // @description	Ce script analyse les combats sur Blood Wars.
 // @copyright   2012-2014, Ecilam
@@ -196,9 +196,9 @@ var L = (function(){
 			"Trwa przerwa związana z aktualizacją rankingu gry."],
 		//INIT
 		"sUnknowID":
-			["BloorWarsEnhanced - Erreur :\n\nLe nom de ce vampire doit être lié à son ID. Merci de consulter la Salle du Trône pour rendre le script opérationnel.\nCe message est normal si vous utilisez ce script pour la première fois ou si vous avez changé le nom du vampire.",
-			"BloorWarsEnhanced - Error :\n\nThe name of this vampire must be linked to her ID. Please consult the Throne Room to make the script running.\nThis message is normal if you use this script for the first time or if you changed the name of the vampire.",
-			"BloorWarsEnhanced - Błąd :\n\nNazwa tego wampira musi być związana z jej ID. Proszę zapoznać się z sali tronowej, aby skrypt uruchomiony.\nTo wiadomość jest normalne, jeśli użyć tego skryptu po raz pierwszy lub jeśli zmienił nazwę wampira."],
+			["BloodWarsAnalyseRC - Erreur :\n\nLe nom de ce vampire doit être lié à son ID. Merci de consulter la Salle du Trône pour rendre le script opérationnel.\nCe message est normal si vous utilisez ce script pour la première fois ou si vous avez changé le nom du vampire.",
+			"BloodWarsAnalyseRC - Error :\n\nThe name of this vampire must be linked to her ID. Please consult the Throne Room to make the script running.\nThis message is normal if you use this script for the first time or if you changed the name of the vampire.",
+			"BloodWarsAnalyseRC - Błąd :\n\nNazwa tego wampira musi być związana z jej ID. Proszę zapoznać się z sali tronowej, aby skrypt uruchomiony.\nTo wiadomość jest normalne, jeśli użyć tego skryptu po raz pierwszy lub jeśli zmienił nazwę wampira."],
 		// tri
 		"sTriUp":["▲"],
 		"sTriDown":["▼"],
