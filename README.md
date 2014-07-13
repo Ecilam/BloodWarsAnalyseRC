@@ -1,5 +1,5 @@
 ###DESCRIPTION
-Ensemble de Userscripts pour [Blood Wars](http://www.fr.bloodwars.net) où vous incarnez un vampire dans un monde post-apocalyptique :
+Ensemble de Userscripts améliorant le jeu [Blood Wars](http://www.fr.bloodwars.net) où vous incarnez un vampire dans un monde post-apocalyptique :
 * [BloodWarsEnchanced](https://github.com/Ecilam/BloodWarsEnhanced)
 * [BloodWarsAnalyseRC](https://github.com/Ecilam/BloodWarsAnalyseRC) (celui-ci)
 * [BloodWarsSpyData](https://github.com/Ecilam/BloodWarsSpyData)
@@ -11,11 +11,11 @@ Pour tout contact passer par mon [topic](http://forum.fr.bloodwars.net/index.php
 Pour les bugs, GitHub propose une section [Issues](https://github.com/Ecilam/BloodWarsAnalyseRC/issues).
 
 ###INSTALLATION
-* Pour Firefox installer préalablement soit [Greasemonkey](https://addons.mozilla.org/fr/firefox/addon/greasemonkey/) soit [Scriptish](https://addons.mozilla.org/en-US/firefox/addon/scriptish/).
-* Pour Google Chrome installer [Tampermonkey](https://chrome.google.com/webstore/detail/dhdgffkkebhmkfjojejmpbldmpobfkfo).
-* Ensuite afficher la version [RAW](https://raw.githubusercontent.com/Ecilam/BloodWarsAnalyseRC/master/BloodWarsAnalyseRC@bwarc.user.js) du script pour que l'add'on vous propose de l'installer.
+* Pour Firefox installer préalablement le module [Greasemonkey](https://addons.mozilla.org/fr/firefox/addon/greasemonkey/) ou [Scriptish](https://addons.mozilla.org/en-US/firefox/addon/scriptish/).
+* Pour Google Chrome installer l'extension [Tampermonkey](https://chrome.google.com/webstore/detail/dhdgffkkebhmkfjojejmpbldmpobfkfo).
+* Ensuite afficher la version [RAW](https://raw.githubusercontent.com/Ecilam/BloodWarsEnhanced/master/BloodWarsEnhanced@bwe.user.js) du script pour que le module (ou l'extension) vous propose de l'installer.
 
-###FEATURES
+###FONCTIONS
 Analyse les combats (embuscades, expéditions, sièges...) et délivre 3 tableaux :
 * ANALYSE DU COMBAT (diverses statitiques)
 * DOMMAGES / MANCHE
