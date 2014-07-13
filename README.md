@@ -13,7 +13,7 @@ Pour les bugs, GitHub propose une section [Issues](https://github.com/Ecilam/Blo
 ###INSTALLATION
 * Pour Firefox installer préalablement le module [Greasemonkey](https://addons.mozilla.org/fr/firefox/addon/greasemonkey/) ou [Scriptish](https://addons.mozilla.org/en-US/firefox/addon/scriptish/).
 * Pour Google Chrome installer l'extension [Tampermonkey](https://chrome.google.com/webstore/detail/dhdgffkkebhmkfjojejmpbldmpobfkfo).
-* Ensuite afficher la version [RAW](https://raw.githubusercontent.com/Ecilam/BloodWarsEnhanced/master/BloodWarsEnhanced@bwe.user.js) du script pour que le module (ou l'extension) vous propose de l'installer.
+* Ensuite afficher la version [RAW](https://raw.githubusercontent.com/Ecilam/BloodWarsAnalyseRC/master/BloodWarsAnalyseRC@bwarc.user.js) du script pour que le module (ou l'extension) vous propose de l'installer.
 
 ###FONCTIONS
 Analyse les combats (embuscades, expéditions, sièges...) et délivre 3 tableaux :
