@@ -3,7 +3,7 @@
 // ==UserScript==
 // @author		Ecilam
 // @name		Blood Wars Analyse RC
-// @version		2014.08.05
+// @version		2014.08.05a
 // @namespace	BWARC
 // @description	Ce script analyse les combats sur Blood Wars.
 // @copyright   2012-2014, Ecilam
@@ -210,7 +210,7 @@ var L = (function(){
 				"^<b>([^<>]+)<\\/b> kończy swoje nie-życie na polu walki.$"],
 		"sRCRight1":["^<b>([^<>]+)<\\/b> obtient des dommages de <b>(\\d+)<\\/b> PTS DE VIE$",
 					"^<b>([^<>]+)<\\/b> takes <b>(\\d+)<\\/b> damage$",
-					"^<b>([^<>]+)<\\/b> zostaje zraniony za <b>(\\d+)<\\/b> PKT ŻYCIA$"],
+					"^<b>([^<>]+)<\\/b> zostaje (?:zraniony|zraniona) za <b>(\\d+)<\\/b> PKT ŻYCIA$"],
 		"sRCRight2":["^<b>([^<>]+)<\\/b> évite le coup$",
 					"^<b>([^<>]+)<\\/b> dodges the strike$",
 					"^<b>([^<>]+)<\\/b> unika ciosu$"],
