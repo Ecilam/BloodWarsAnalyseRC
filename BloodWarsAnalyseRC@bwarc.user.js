@@ -3,7 +3,7 @@
 // ==UserScript==
 // @author		Ecilam
 // @name		Blood Wars Analyse RC
-// @version		2014.07.13
+// @version		2014.08.05
 // @namespace	BWARC
 // @description	Ce script analyse les combats sur Blood Wars.
 // @copyright   2012-2014, Ecilam
@@ -14,7 +14,8 @@
 // @include     /^http:\/\/r[0-9]*\.bloodwars\.net\/.*$/
 // @include     /^http:\/\/r[0-9]*\.bloodwars\.interia\.pl\/.*$/
 // @include     /^http:\/\/beta[0-9]*\.bloodwars\.net\/.*$/
-// @grant       none
+// @grant       GM_getValue
+// @grant       GM_setValue
 // ==/UserScript==
 "use strict";
 
@@ -70,21 +71,17 @@ var JSONS = (function(){
 	})();
 
 /******************************************************
-* OBJET LS - Datas Storage
-* - basé sur localStorage
-* Note : localStorage est lié au domaine
+* OBJET GM - GreaseMonkey Datas Storage
 ******************************************************/
-var LS = (function(){
-	var LS = window.localStorage;
+var GM = (function(){
 	return {
 		_GetVar: function(key,defaut){
-			var value = LS.getItem(key); // if key does not exist return null 
-			return ((value!=null)?JSONS._Decode(value):defaut);
+			var value = GM_getValue(key);
+			return (_Exist(value)?JSONS._Decode(value):defaut);
 			},
 		_SetVar: function(key,value){
-			LS.setItem(key,JSONS._Encode(value));
-			return value;
-			},
+			GM_setValue(key,JSONS._Encode(value));
+			}
 		};
 	})();
 
@@ -287,6 +284,10 @@ var DATAS = (function(){
 			var playerName = DOM._GetFirstNodeTextContent("//div[@class='stats-player']/a[@class='me']", null);
 			return playerName;
 			},
+		_Royaume: function(){
+			var	royaume = DOM._GetFirstNodeTextContent("//div[@class='gameStats']/b[1]", null);
+			return royaume;
+			},
 	/* Données diverses	*/
 		_GetPage: function(){
 			var page = 'null',
@@ -335,7 +336,7 @@ var PREF = (function(){
 	return {
 		_Init: function(id){
 			ID = id;
-			prefs = LS._GetVar(index+ID,{});
+			prefs = GM._GetVar(index+ID,{});
 			},
 		_Get: function(grp,key){
 			if (_Exist(prefs[grp])&&_Exist(prefs[grp][key])) return prefs[grp][key];
@@ -346,7 +347,7 @@ var PREF = (function(){
 			if (ID!=null){
 				if (!_Exist(prefs[grp])) prefs[grp] = {};
 				prefs[grp][key] = value;
-				LS._SetVar(index+ID,prefs);
+				GM._SetVar(index+ID,prefs);
 				}
 			},
 		};
@@ -712,19 +713,20 @@ console.debug('BWARCpage :',page);
 	if (['null','pServerDeco','pServerUpdate','pServerOther'].indexOf(page)==-1){
 		// identification du joueur
 		var player = DATAS._PlayerName(),
-			IDs = LS._GetVar('BWARC:IDS',{}),
-			lastID = LS._GetVar('BWARC:LASTID',null);
-console.debug('BWEstart: %o %o',player,IDs);
-		if (player!=null&&page=='pMain'){
+			realm = DATAS._Royaume(),
+			IDs = GM._GetVar('BWARC:IDS',{}),
+			lastID = GM._GetVar('BWARC:LASTID',null);
+console.debug('BWEstart: %o %o %o %o',player,realm,IDs,lastID);
+		if (player!=null&&realm!=null&&page=='pMain'){
 			var result = DOM._GetFirstNodeTextContent("//div[@class='throne-maindiv']/div/span[@class='reflink']",null);
 			if (result!=null){
 				var result2 = /r\.php\?r=([0-9]+)/.exec(result),
 					ID = _Exist(result2[1])?result2[1]:null;
 				if (ID!=null){
 					for (var i in IDs) if (IDs[i]==ID) delete IDs[i]; // en cas de changement de nom
-					IDs[player] = ID;
-					LS._SetVar('BWARC:IDS',IDs);
-					LS._SetVar('BWARC:LASTID',ID);
+					IDs[realm+':'+player] = ID;
+					GM._SetVar('BWARC:IDS',IDs);
+					GM._SetVar('BWARC:LASTID',realm+':'+ID);
 					}
 				}
 			}
@@ -734,9 +736,9 @@ console.debug('BWEstart: %o %o',player,IDs);
 				PREF._Init(lastID);
 				AnalyseRC();
 				}
-			else if (player!=null&&_Exist(IDs[player])&&page!='pShowMsg'){
+			else if (player!=null&&realm!=null&&_Exist(IDs[realm+':'+player])&&page!='pShowMsg'){
 				SetCSS();
-				PREF._Init(IDs[player]);
+				PREF._Init(realm+':'+IDs[realm+':'+player]);
 				AnalyseRC();
 				}
 			else alert(L._Get("sUnknowID"));
