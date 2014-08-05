@@ -27,5 +27,4 @@ Pour les bugs, GitHub propose une section [Issues](https://github.com/Ecilam/Blo
 
 ###INFORMATIONS
 * **1ère utilisation:** un message vous rappellera de consulter la Salle du Trône pour que le script puisse récupérer l'IUD du personnage afin de pouvoir fonctionner.
-* **Données:** les préférences sont stockées avec LOCALSTORAGE.
 * **[FrenchUnMod](https://greasyfork.org/scripts/2158-frenchunmod)** : compatible.
