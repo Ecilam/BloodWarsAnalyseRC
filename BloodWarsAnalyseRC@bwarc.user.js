@@ -3,7 +3,7 @@
 // ==UserScript==
 // @author		Ecilam
 // @name		Blood Wars Analyse RC
-// @version		2014.08.05a
+// @version		2014.08.08
 // @namespace	BWARC
 // @description	Ce script analyse les combats sur Blood Wars.
 // @copyright   2012-2014, Ecilam
@@ -170,9 +170,6 @@ var IU = (function(){
 		_addEvent: function(obj,type,fn,par){
 			var funcName = function(event){return fn.call(obj,event,par);};
 			obj.addEventListener(type,funcName,false);
-			if (!obj.BWEListeners) {obj.BWEListeners = {};}
-			if (!obj.BWEListeners[type]) obj.BWEListeners[type]={};
-			obj.BWEListeners[type][fn.name]=funcName;
 			},
 		};
 	})();
@@ -202,12 +199,14 @@ var L = (function(){
 		"sTriNbTest":["^([0-9]+(?:\\.[0-9]*)?)$"],
 		"sTriPrcTest":["^([0-9]+)\\([0-9 ]+\\%\\)$"],
 		//RC
-		"sAmbushTest7":["([0-9]+) \\/ ([0-9]+)<br>([0-9]+) \\/ ([0-9]+)"],
-		"sRCTest":["^([^,]+), ([^,]+).$"],
+		"sRCname":["^([^\\(]+)(?: \\(\\*\\))?(?: \\(@\\))?$"],
+		"sRCsum1":["(.+)<br>(.+)"],
+		"sRCsum2":["([0-9]+) \\/ ([0-9]+)<br>([0-9]+) \\/ ([0-9]+)"],
+		"sRCTest":["^([^,]+), ([^,]+)\\.$"],
 		"sRCLeft":["^<b>([^<>]+)<\\/b>.+$"],
-		"sRCDead":["^<b>([^<>]+)<\\/b> (?:finit|fini) sa (?:non-|)vie sur le champ de bataille.$",
-				"^<b>([^<>]+)<\\/b> is slain on the battlefield.$",
-				"^<b>([^<>]+)<\\/b> kończy swoje nie-życie na polu walki.$"],
+		"sRCDead":["^<b>([^<>]+)<\\/b> (?:finit|fini) sa (?:non-|)vie sur le champ de bataille\\.$",
+				"^<b>([^<>]+)<\\/b> is slain on the battlefield\\.$",
+				"^<b>([^<>]+)<\\/b> kończy swoje nie-życie na polu walki\\.$"],
 		"sRCRight1":["^<b>([^<>]+)<\\/b> obtient des dommages de <b>(\\d+)<\\/b> PTS DE VIE$",
 					"^<b>([^<>]+)<\\/b> takes <b>(\\d+)<\\/b> damage$",
 					"^<b>([^<>]+)<\\/b> zostaje (?:zraniony|zraniona) za <b>(\\d+)<\\/b> PKT ŻYCIA$"],
@@ -218,12 +217,12 @@ var L = (function(){
 					"^<b>([^<>]+)<\\/b> performs a series of feints and dodges the strike$",
 					"^<b>([^<>]+)<\\/b> wykonuje serię zwodów i unika trafienia$"],
 		"sRCCrit":["<b>un coup critique</b>","<b>strikes critically</b>","<b>cios krytyczny</b>"],
-		"sRCHeal":["^(?:Une force miraculeuse fait que |)<b>([^<>]+)<\\/b> regagne <b>(\\d+)<\\/b> PTS DE VIE.$",
-					"^(?:A miraculous power makes |)<b>([^<>]+)<\\/b> regenerate[s]? <b>(\\d+)<\\/b> HP.$",
-					"^(?:Cudowna siła sprawia, że |)<b>([^<>]+)<\\/b> odzyskuje <b>(\\d+)<\\/b> PKT ŻYCIA.$"],
-		"sRCLeach":["^<b>([^<>]+)<\\/b> perd <b>(\\d+)<\\/b> PTS DE VIE.$",
-					"^<b>([^<>]+)<\\/b> loses <b>(\\d+)<\\/b> HP.$",
-					"^<b>([^<>]+)<\\/b> traci <b>(\\d+)<\\/b> PKT KRWI.$"],
+		"sRCHeal":["^(?:Une force miraculeuse fait que |)<b>([^<>]+)<\\/b> regagne <b>(\\d+)<\\/b> PTS DE VIE\\.$",
+					"^(?:A miraculous power makes |)<b>([^<>]+)<\\/b> regenerate[s]? <b>(\\d+)<\\/b> HP\\.$",
+					"^(?:Cudowna siła sprawia, że |)<b>([^<>]+)<\\/b> odzyskuje <b>(\\d+)<\\/b> PKT ŻYCIA\\.$"],
+		"sRCLeach":["^<b>([^<>]+)<\\/b> perd <b>(\\d+)<\\/b> PTS DE VIE\\.$",
+					"^<b>([^<>]+)<\\/b> loses <b>(\\d+)<\\/b> HP\\.$",
+					"^<b>([^<>]+)<\\/b> traci <b>(\\d+)<\\/b> PKT KRWI\\.$"],
 		"sRCTitle1":["ANALYSE DU COMBAT","ANALYSIS OF BATTLE","ANALIZA BITWY"],
 		"sRCTitle2":["DOMMAGES / MANCHE","DAMAGE / ROUND","SZKÓD / RUNDA"],
 		"sRCTitle3":["INITIATIVE / MANCHE","INITIATIVE / ROUND","INICJATYWA / RUNDA"],
@@ -433,30 +432,49 @@ function AnalyseRC(){
 			PREF._Set('RC','tr'+i[0],tri);
 			}
 		}
+	function realName(i){
+		var result = new RegExp(L._Get('sRCname')).exec(i);
+		return (result==null?i:result[1]);
+		}
 	const defPlay = {'count':1,'cl':null,'init':[],'hit':0,'cc':0,'fail':0,'esq':0,'dmin':null,'rdd':[],
 					'dmax':0,'dmg':0,'dnb':0,'dfail':0,'desq':0,'pvlost':0,'pvwin':0,'dead':[]};
 	var msgContent = DOM._GetFirstNode("//div[(@class='msg-content ' or @class='msg-content msg-quest')]"),
 		versus = DOM._GetNodes("./div/table[@class='fight']/tbody/tr[@class='versus']",msgContent);
 	if (versus!=null&&PREF._Get('RC','sh0')==1){
-		for (var k=0;k<versus.snapshotLength;k++){
+		for (var k=0;k<versus.snapshotLength;k++){// arène 3v3 avec plusieurs combats
 			var RC = DOM._GetFirstNode("./div/div[(@class='rlc fight' or @class='rlc')]["+(k+1)+"]",msgContent);
 			if (RC!=null){
-				var list = {};
-				//ajout des protagonistes
-				var prAtt = DOM._GetNodes("./div/div[@class='amblist rlr fll']["+(k+1)+"]/ul/li/span",msgContent);
-				for (var i=0;i<prAtt.snapshotLength;i++){
-					var temp = prAtt.snapshotItem(i).textContent;
-					if (_Exist(list[temp])) list[temp]['count']++;
-					else{list[temp] = clone(defPlay);list[temp]['cl'] = 'atkHit';}
+				var list = {},
+					rounds = DOM._GetNodes("./ul[@class='round']",RC),
+					sum1 = DOM._GetLastNodeInnerHTML("./ul[@class='round']/li/div[@class='sum1']",null,RC),
+					sum2 = DOM._GetLastNodeInnerHTML("./ul[@class='round']/li/div[@class='sum2']",null,RC),
+					prAtt = DOM._GetNodes("./div/div[@class='ambsummary']["+(k+1)+"]/table/tbody/tr/td[@class='atkHit']/b",msgContent),
+					prDef = DOM._GetNodes("./div/div[@class='ambsummary']["+(k+1)+"]/table/tbody/tr/td[@class='defHit']/b",msgContent);
+				// protagonistes ambu + arène solo
+				if (sum1!=null&&sum2!=null){
+					var result1 = new RegExp(L._Get('sRCsum1')).exec(sum1),
+						result2 = new RegExp(L._Get('sRCsum2')).exec(sum2);
+					if (result1!=null&&result2!=null){
+						var name1 = realName(result1[1]),
+							name2 = realName(result1[2]);
+						list[name1] = clone(defPlay); list[name1]['cl'] = 'atkHit';
+						list[name2] = clone(defPlay); list[name2]['cl'] = 'defHit';
+						if (result2[1]==0) list[name1]['dead'][rounds.snapshotLength-1]=1;
+						if (result2[3]==0) list[name2]['dead'][rounds.snapshotLength-1]=1;
+						}
 					}
-				var prDef = DOM._GetNodes("./div/div[@class='amblist rll flr']["+(k+1)+"]/ul/li/span",msgContent);
-				for (var i=0;i<prDef.snapshotLength;i++){
-					var temp = prDef.snapshotItem(i).textContent;
+				// protagonistes arène multi, rdc, expé
+				for (var i=0;i<prAtt.snapshotLength;i++){
+					var temp = realName(prAtt.snapshotItem(i).textContent);
 					if (_Exist(list[temp])) list[temp]['count']++;
-					else{list[temp] = clone(defPlay);list[temp]['cl'] = 'defHit';}
+					else{list[temp] = clone(defPlay); list[temp]['cl'] = 'atkHit';}
+					}
+				for (var i=0;i<prDef.snapshotLength;i++){
+					var temp = realName(prDef.snapshotItem(i).textContent);
+					if (_Exist(list[temp])) list[temp]['count']++;
+					else{list[temp] = clone(defPlay); list[temp]['cl'] = 'defHit';}
 					}
 				// Analyse le RC
-				var rounds = DOM._GetNodes("./ul[@class='round']",RC);
 				for (var i=0;i<rounds.snapshotLength;i++){
 					var round = rounds.snapshotItem(i),
 						lignes = DOM._GetNodes("./li",round),
@@ -466,23 +484,26 @@ function AnalyseRC(){
 							ligCla = ligne.getAttribute('class');
 						if (ligCla=='playerDeath'){
 							var dead = new RegExp(L._Get('sRCDead')).exec(ligne.innerHTML);
-							if (dead!=null&&_Exist(list[dead[1]])) list[dead[1]]['dead'][i] = _Exist(list[dead[1]]['dead'][i])?list[dead[1]]['dead'][i]+1:1;
+							if (dead!=null){
+								var name = realName(dead[1]);
+								list[name]['dead'][i] = _Exist(list[name]['dead'][i])?list[name]['dead'][i]+1:1;
+								}
 							}
 						else if (ligCla=='atkHit'||ligCla=='defHit'){
 							var result = new RegExp(L._Get('sRCTest')).exec(ligne.innerHTML);
 							if (result!=null){
 								var left = new RegExp(L._Get('sRCLeft')).exec(result[1]);
 								if (left!=null){
-									var tempAtt = _Exist(list[left[1]])?list[left[1]]:clone(defPlay);
-									tempAtt['cl'] = ligCla=='atkHit'?'atkHit':'defHit';
-									if (!_Exist(tempAtt['init'][i])){ init++; tempAtt['init'][i]=init;}
+									var nameL = realName(left[1]),
+										tempAtt = list[nameL];
+									if (!_Exist(tempAtt['init'][i])){init++; tempAtt['init'][i]=init;}
 									var right1 = new RegExp(L._Get('sRCRight1')).exec(result[2]);
 									var right2 = new RegExp(L._Get('sRCRight2')).exec(result[2]);
 									var right3 = new RegExp(L._Get('sRCRight3')).exec(result[2]);
 									if (right1!=null||right2!=null||right3!=null){
 										var right = right1!=null?right1:(right2!=null?right2:right3),
-											tempDef = _Exist(list[right[1]])?list[right[1]]:clone(defPlay);
-										tempDef['cl'] = ligCla=='defHit'?'atkHit':'defHit';
+											nameR = realName(right[1]),
+											tempDef = list[nameR];
 										tempDef['dnb']++;
 										if (right1!=null){
 											if (_Exist(tempAtt['rdd'][i])) tempAtt['rdd'][i] += Number(right[2]);
@@ -496,29 +517,17 @@ function AnalyseRC(){
 											}
 										else if (right2!=null){tempAtt['fail']++;tempDef['dfail']++;}
 										else{tempAtt['esq']++;tempDef['desq']++;}
-										if (ligCla=='atkHit'){list[left[1]] = tempAtt; list[right[1]] = tempDef;}
-										else{list[right[1]] = tempDef; list[left[1]] = tempAtt;}
+										if (ligCla=='atkHit'){list[nameL] = tempAtt; list[nameR] = tempDef;}
+										else{list[nameR] = tempDef; list[nameL] = tempAtt;}
 										}
 									}
 								}
 							}
 						else if (ligCla=='heal'){
 							var heal = new RegExp(L._Get('sRCHeal')).exec(ligne.innerHTML);
-							if (heal!=null&&_Exist(list[heal[1]])) list[heal[1]]['pvwin']+= Number(heal[2]);
+							if (heal!=null) list[realName(heal[1])]['pvwin']+= Number(heal[2]);
 							var leach = new RegExp(L._Get('sRCLeach')).exec(ligne.innerHTML);
-							if (leach!=null&&_Exist(list[leach[1]])) list[leach[1]]['pvlost']+= Number(leach[2]);
-							}
-						else if (ligCla=='result'){// mort lors d'un duel
-							var sum1 = DOM._GetLastNodeInnerHTML(".//div[@class='sum1']",null,round),
-								sum2 = DOM._GetLastNodeInnerHTML(".//div[@class='sum2']",null,round);
-							if (sum1!=null&&sum2!=null){
-								var result1 = new RegExp("(.+)<br>(.+)").exec(sum1);
-								var result2 = new RegExp(L._Get('sAmbushTest7')).exec(sum2);
-								if (result1!=null&&result2!=null){
-									if (_Exist(list[result1[1]])&&result2[1]==0) list[result1[1]]['dead'][i]=1;
-									if (_Exist(list[result1[2]])&&result2[3]==0) list[result1[2]]['dead'][i]=1;
-									}
-								}
+							if (leach!=null) list[realName(leach[1])]['pvlost']+= Number(leach[2]);
 							}
 						}
 					}
@@ -716,7 +725,7 @@ console.debug('BWARCpage :',page);
 			realm = DATAS._Royaume(),
 			IDs = GM._GetVar('BWARC:IDS',{}),
 			lastID = GM._GetVar('BWARC:LASTID',null);
-console.debug('BWEstart: %o %o %o %o',player,realm,IDs,lastID);
+console.debug('BWARCstart: %o %o %o %o',player,realm,IDs,lastID);
 		if (player!=null&&realm!=null&&page=='pMain'){
 			var result = DOM._GetFirstNodeTextContent("//div[@class='throne-maindiv']/div/span[@class='reflink']",null);
 			if (result!=null){
@@ -745,5 +754,5 @@ console.debug('BWEstart: %o %o %o %o',player,realm,IDs,lastID);
 			}
 		}
 	}
-console.debug('BWEEnd');
+console.debug('BWARCend');
 })();
