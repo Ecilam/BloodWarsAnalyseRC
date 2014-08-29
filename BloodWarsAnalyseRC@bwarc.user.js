@@ -3,7 +3,7 @@
 // ==UserScript==
 // @author		Ecilam
 // @name		Blood Wars Analyse RC
-// @version		2014.08.08
+// @version		2014.08.29
 // @namespace	BWARC
 // @description	Ce script analyse les combats sur Blood Wars.
 // @copyright   2012-2014, Ecilam
@@ -128,7 +128,7 @@ var DOM = (function(){
 	})();
 
 /******************************************************
-* OBJET IU - Interface Utilsateur
+* OBJET IU - Interface Utilisateur
 ******************************************************/
 var IU = (function(){
 	return {
@@ -203,26 +203,26 @@ var L = (function(){
 		"sRCsum1":["(.+)<br>(.+)"],
 		"sRCsum2":["([0-9]+) \\/ ([0-9]+)<br>([0-9]+) \\/ ([0-9]+)"],
 		"sRCTest":["^([^,]+), ([^,]+)\\.$"],
-		"sRCLeft":["^<b>([^<>]+)<\\/b>.+$"],
-		"sRCDead":["^<b>([^<>]+)<\\/b> (?:finit|fini) sa (?:non-|)vie sur le champ de bataille\\.$",
-				"^<b>([^<>]+)<\\/b> is slain on the battlefield\\.$",
-				"^<b>([^<>]+)<\\/b> kończy swoje nie-życie na polu walki\\.$"],
-		"sRCRight1":["^<b>([^<>]+)<\\/b> obtient des dommages de <b>(\\d+)<\\/b> PTS DE VIE$",
-					"^<b>([^<>]+)<\\/b> takes <b>(\\d+)<\\/b> damage$",
-					"^<b>([^<>]+)<\\/b> zostaje (?:zraniony|zraniona) za <b>(\\d+)<\\/b> PKT ŻYCIA$"],
-		"sRCRight2":["^<b>([^<>]+)<\\/b> évite le coup$",
-					"^<b>([^<>]+)<\\/b> dodges the strike$",
-					"^<b>([^<>]+)<\\/b> unika ciosu$"],
-		"sRCRight3":["^<b>([^<>]+)<\\/b> effectue une série d`esquives et évite la frappe$",
-					"^<b>([^<>]+)<\\/b> performs a series of feints and dodges the strike$",
-					"^<b>([^<>]+)<\\/b> wykonuje serię zwodów i unika trafienia$"],
-		"sRCCrit":["<b>un coup critique</b>","<b>strikes critically</b>","<b>cios krytyczny</b>"],
-		"sRCHeal":["^(?:Une force miraculeuse fait que |)<b>([^<>]+)<\\/b> regagne <b>(\\d+)<\\/b> PTS DE VIE\\.$",
-					"^(?:A miraculous power makes |)<b>([^<>]+)<\\/b> regenerate[s]? <b>(\\d+)<\\/b> HP\\.$",
-					"^(?:Cudowna siła sprawia, że |)<b>([^<>]+)<\\/b> odzyskuje <b>(\\d+)<\\/b> PKT ŻYCIA\\.$"],
-		"sRCLeach":["^<b>([^<>]+)<\\/b> perd <b>(\\d+)<\\/b> PTS DE VIE\\.$",
-					"^<b>([^<>]+)<\\/b> loses <b>(\\d+)<\\/b> HP\\.$",
-					"^<b>([^<>]+)<\\/b> traci <b>(\\d+)<\\/b> PKT KRWI\\.$"],
+		"sRCLeft":["^<b[^<>]*>([^<>]+)<\\/b>.+$"],
+		"sRCDead":["^<b[^<>]*>([^<>]+)<\\/b> (?:finit|fini) sa (?:non-|)vie sur le champ de bataille\\.$",
+				"^<b[^<>]*>([^<>]+)<\\/b> is slain on the battlefield\\.$",
+				"^<b[^<>]*>([^<>]+)<\\/b> kończy swoje nie-życie na polu walki\\.$"],
+		"sRCRight1":["^<b[^<>]*>([^<>]+)<\\/b> obtient des dommages de <b[^<>]*>(\\d+)<\\/b> PTS DE VIE$",
+					"^<b[^<>]*>([^<>]+)<\\/b> takes <b[^<>]*>(\\d+)<\\/b> damage$",
+					"^<b[^<>]*>([^<>]+)<\\/b> zostaje (?:zraniony|zraniona) za <b[^<>]*>(\\d+)<\\/b> PKT ŻYCIA$"],
+		"sRCRight2":["^<b[^<>]*>([^<>]+)<\\/b> évite le coup$",
+					"^<b[^<>]*>([^<>]+)<\\/b> dodges the strike$",
+					"^<b[^<>]*>([^<>]+)<\\/b> unika ciosu$"],
+		"sRCRight3":["^<b[^<>]*>([^<>]+)<\\/b> effectue une série d`esquives et évite la frappe$",
+					"^<b[^<>]*>([^<>]+)<\\/b> performs a series of feints and dodges the strike$",
+					"^<b[^<>]*>([^<>]+)<\\/b> wykonuje serię zwodów i unika trafienia$"],
+		"sRCCrit":["<b[^<>]*>un coup critique</b>","<b[^<>]*>strikes critically</b>","<b[^<>]*>cios krytyczny</b>"],
+		"sRCHeal":["^(?:Une force miraculeuse fait que |)<b[^<>]*>([^<>]+)<\\/b> regagne <b[^<>]*>(\\d+)<\\/b> PTS DE VIE\\.$",
+					"^(?:A miraculous power makes |)<b[^<>]*>([^<>]+)<\\/b> regenerate[s]? <b[^<>]*>(\\d+)<\\/b> HP\\.$",
+					"^(?:Cudowna siła sprawia, że |)<b[^<>]*>([^<>]+)<\\/b> odzyskuje <b[^<>]*>(\\d+)<\\/b> PKT ŻYCIA\\.$"],
+		"sRCLeach":["^<b[^<>]*>([^<>]+)<\\/b> perd <b[^<>]*>(\\d+)<\\/b> PTS DE VIE\\.$",
+					"^<b[^<>]*>([^<>]+)<\\/b> loses <b[^<>]*>(\\d+)<\\/b> HP\\.$",
+					"^<b[^<>]*>([^<>]+)<\\/b> traci <b[^<>]*>(\\d+)<\\/b> PKT KRWI\\.$"],
 		"sRCTitle1":["ANALYSE DU COMBAT","ANALYSIS OF BATTLE","ANALIZA BITWY"],
 		"sRCTitle2":["DOMMAGES / MANCHE","DAMAGE / ROUND","SZKÓD / RUNDA"],
 		"sRCTitle3":["INITIATIVE / MANCHE","INITIATIVE / ROUND","INICJATYWA / RUNDA"],
