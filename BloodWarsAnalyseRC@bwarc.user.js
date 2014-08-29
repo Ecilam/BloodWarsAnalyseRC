@@ -3,7 +3,7 @@
 // ==UserScript==
 // @author		Ecilam
 // @name		Blood Wars Analyse RC
-// @version		2014.08.29
+// @version		2014.08.29a
 // @namespace	BWARC
 // @description	Ce script analyse les combats sur Blood Wars.
 // @copyright   2012-2014, Ecilam
@@ -511,7 +511,7 @@ function AnalyseRC(){
 											tempDef['pvlost'] += Number(right[2]);
 											tempAtt['hit']++;
 											tempAtt['dmg'] += Number(right[2]);
-											if (result[1].indexOf(L._Get('sRCCrit'))!=-1) tempAtt['cc']++;
+											if (new RegExp(L._Get('sRCCrit')).exec(result[1])!=null) tempAtt['cc']++;
 											if (tempAtt['dmin']==null||(tempAtt['dmin']!=null&&tempAtt['dmin']>Number(right[2]))) tempAtt['dmin'] = Number(right[2]);
 											if (tempAtt['dmax']<Number(right[2])) tempAtt['dmax'] = Number(right[2]);
 											}
