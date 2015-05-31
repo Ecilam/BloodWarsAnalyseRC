@@ -3,7 +3,7 @@
 // ==UserScript==
 // @author		Ecilam
 // @name		Blood Wars Analyse RC
-// @version		2015.04.01
+// @version		2015.05.31
 // @namespace	BWARC
 // @description	Ce script analyse les combats sur Blood Wars.
 // @copyright   2012-2014, Ecilam
@@ -76,6 +76,7 @@ var GM = (function(){
 			},
 		_SetVar: function(key,v){
 			GM_setValue(key,JSONS._Encode(v));
+			return v;
 			}
 		};
 	})();
@@ -331,6 +332,8 @@ var PREF = (function(){
 		_Init: function(id){
 			ID = id;
 			prefs = GM._GetVar(index+ID,{});
+console.debug('BWARC:prefs:',ID,prefs,_Type(prefs));
+			prefs = _Type(prefs)=='Object'?prefs:{};
 			},
 		_Get: function(grp,key){
 			if (_Exist(prefs[grp])&&_Exist(prefs[grp][key])) return prefs[grp][key];
