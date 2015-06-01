@@ -3,7 +3,7 @@
 // ==UserScript==
 // @author		Ecilam
 // @name		Blood Wars Analyse RC
-// @version		2015.05.31
+// @version		2015.06.01
 // @namespace	BWARC
 // @description	Ce script analyse les combats sur Blood Wars.
 // @copyright   2012-2014, Ecilam
@@ -71,8 +71,8 @@ var JSONS = (function(){
 var GM = (function(){
 	return {
 		_GetVar: function(key,defaut){
-			var v = GM_getValue(key);
-			return (_Exist(v)?JSONS._Decode(v):defaut);
+			var v = GM_getValue(key,null);
+			return (v!=null?JSONS._Decode(v):defaut);
 			},
 		_SetVar: function(key,v){
 			GM_setValue(key,JSONS._Encode(v));
@@ -332,8 +332,6 @@ var PREF = (function(){
 		_Init: function(id){
 			ID = id;
 			prefs = GM._GetVar(index+ID,{});
-console.debug('BWARC:prefs:',ID,prefs,_Type(prefs));
-			prefs = _Type(prefs)=='Object'?prefs:{};
 			},
 		_Get: function(grp,key){
 			if (_Exist(prefs[grp])&&_Exist(prefs[grp][key])) return prefs[grp][key];
@@ -737,7 +735,7 @@ function AnalyseRC(){
 ******************************************************/
 // vérification des services
 if (!JSON) throw new Error("Erreur : le service JSON n\'est pas disponible.");
-else if (!window.localStorage) throw new Error("Erreur : le service localStorage n\'est pas disponible.");
+//else if (!window.localStorage) throw new Error("Erreur : le service localStorage n\'est pas disponible.");
 else{
 	var p = DATAS._GetPage();
 console.debug('BWARCpage :',p);
