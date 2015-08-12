@@ -5,6 +5,7 @@ Ensemble de Userscripts améliorant le jeu [Blood Wars](http://www.fr.bloodwars.
 * [BloodWarsSpyData](https://github.com/Ecilam/BloodWarsSpyData)
 * [BloodWarsToolBox](https://github.com/Ecilam/BloodWarsToolBox)
 * [BloodWarsItemTest](https://github.com/Ecilam/BloodWarsItemTest)
+* [BloodWarsItemTest](https://github.com/Ecilam/BloodWarsMix)
 
 Ce script est compatible avec les serveurs Anglais/Français/Polonais 1.6.5 et les navigateurs Firefox, Chrome et Opera.
 Testé actuellement avec Firefox v40.0 sur serveur R3FR.
