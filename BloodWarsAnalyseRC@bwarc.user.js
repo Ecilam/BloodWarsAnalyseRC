@@ -3,7 +3,7 @@
 // ==UserScript==
 // @author		Ecilam
 // @name		Blood Wars Analyse RC
-// @version		2015.11.25
+// @version		2016.01.28
 // @namespace	BWARC
 // @description	Ce script analyse les combats sur Blood Wars.
 // @copyright   2012-2014, Ecilam
@@ -38,6 +38,13 @@ String.prototype.truncate = function(length){
 	if (this.length > length) return this.slice(0, length - 3) + "...";
 	else return this;
 	};
+	
+/******************************************************
+* DEBUG
+******************************************************/
+var debug = false,
+	debug_time = Date.now();
+
 /******************************************************
 * OBJET JSONS - JSON
 * - stringification des données
@@ -779,7 +786,7 @@ if (!JSON) throw new Error("Erreur : le service JSON n\'est pas disponible.");
 //else if (!window.localStorage) throw new Error("Erreur : le service localStorage n\'est pas disponible.");
 else{
 	var p = DATAS._GetPage();
-console.debug('BWARCpage :',p);
+if (debug) console.debug('BWARCpage :',p);
 	// Pages gérées par le script
 	if (['null','pServerDeco','pServerUpdate','pServerOther'].indexOf(p)==-1){
 		// identification du joueur
@@ -787,9 +794,9 @@ console.debug('BWARCpage :',p);
 			realm = DATAS._Royaume(),
 			IDs = GM._GetVar('BWARC:IDS',{}),
 			lastID = GM._GetVar('BWARC:LASTID',null);
-console.debug('BWARCstart: %o %o %o %o',player,realm,IDs,lastID);
+if (debug) console.debug('BWARCstart: %o %o %o %o',player,realm,IDs,lastID);
 		if (player!==null&&realm!==null&&p=='pMain'){
-			var r = DOM._GetFirstNodeTextContent("//div[@class='throne-maindiv']/div/span[@class='reflink']",null);
+			var r = DOM._GetFirstNodeTextContent("//div[@id='content-mid']/div[@id='reflink']/span[@class='reflink']",null);
 			if (r!==null){
 				var r2 = /r\.php\?r=([0-9]+)/.exec(r),
 					ID = _Exist(r2[1])?r2[1]:null;
@@ -798,7 +805,6 @@ console.debug('BWARCstart: %o %o %o %o',player,realm,IDs,lastID);
 					IDs[realm+':'+player] = ID;
 					GM._SetVar('BWARC:IDS',IDs);
 					GM._SetVar('BWARC:LASTID',realm+':'+ID);
-console.debug('BWARCmain: %o %o',IDs,ID);
 					}
 				}
 			}
@@ -817,5 +823,5 @@ console.debug('BWARCmain: %o %o',IDs,ID);
 			}
 		}
 	}
-console.debug('BWARCend');
+if (debug) console.debug('BWARCEnd - time %oms',Date.now()-debug_time);
 })();
