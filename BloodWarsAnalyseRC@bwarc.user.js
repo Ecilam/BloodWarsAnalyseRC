@@ -3,7 +3,7 @@
 // ==UserScript==
 // @author		Ecilam
 // @name		Blood Wars Analyse RC
-// @version		2016.01.28
+// @version		2016.09.18
 // @namespace	BWARC
 // @description	Ce script analyse les combats sur Blood Wars.
 // @copyright   2012-2014, Ecilam
@@ -237,6 +237,7 @@ var L = (function(){
 		"sRCsum2":["([0-9]+) \\/ ([0-9]+)<br>([0-9]+) \\/ ([0-9]+)"],
 		"sRCTest":["^([^,]+), ([^,]+)\\.$"],
 		"sRCLeft":["^<b[^<>]*>([^<>]+)<\\/b>.+$"],
+		"sRCLeft2":["^<b[^<>]*>([^<>]+) contre attaque et effectue <\\/b>.+$"],
 		"sRCDead":["^<b[^<>]*>([^<>]+)<\\/b> (?:finit|fini) sa (?:non-|)vie sur le champ de bataille\\.$",
 				"^<b[^<>]*>([^<>]+)<\\/b> is slain on the battlefield\\.$",
 				"^<b[^<>]*>([^<>]+)<\\/b> kończy swoje nie-życie na polu walki\\.$"],
@@ -314,12 +315,10 @@ var DATAS = (function(){
 	return {
 	/* données du joueur */
 		_PlayerName: function(){
-			var playerName = DOM._GetFirstNodeTextContent("//div[@class='stats-player']/a[@class='me']", null);
-			return playerName;
+			return DOM._GetFirstNodeTextContent("//div[@class='stats-player']/a[@class='me']", null);
 			},
 		_Royaume: function(){
-			var	royaume = DOM._GetFirstNodeTextContent("//div[@class='gameStats']/b[1]", null);
-			return royaume;
+			return DOM._GetFirstNodeTextContent("//div[@class='gameStats']/b[1]", null);
 			},
 	/* Données diverses	*/
 		_GetPage: function(){
@@ -558,9 +557,13 @@ function AnalyseRC(){
 							var r = new RegExp(L._Get('sRCTest')).exec(ligne.innerHTML);
 							if (r!==null){
 								var left = new RegExp(L._Get('sRCLeft')).exec(r[1]);
-								if (left!==null){
-									var nameL = realName(left[1]),
-										tempAtt = list[nameL];
+                // cas particulier du talisman Furie bestiale - la balise b est male formatée lors de la contre attaque
+                // correction serveur FR uniquement
+								var left2 = new RegExp(L._Get('sRCLeft2')).exec(r[1]);
+                left = left2!==null?left2:left;
+								if (left!==null&&_Exist(list[realName(left[1])])){
+									var nameL = realName(left[1]);
+									var	tempAtt = list[nameL];
 									if (!_Exist(tempAtt.init[i])){init++; tempAtt.init[i]=init;}
 									var right1 = new RegExp(L._Get('sRCRight1')).exec(r[2]);
 									var right2 = new RegExp(L._Get('sRCRight2')).exec(r[2]);
