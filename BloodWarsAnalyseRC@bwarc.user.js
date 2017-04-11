@@ -3,10 +3,10 @@
 // ==UserScript==
 // @author		Ecilam
 // @name		Blood Wars Analyse RC
-// @version		2016.09.18
+// @version		2017.04.11
 // @namespace	BWARC
 // @description	Ce script analyse les combats sur Blood Wars.
-// @copyright   2012-2014, Ecilam
+// @copyright   2012-2017, Ecilam
 // @license     GPL version 3 ou suivantes; http://www.gnu.org/copyleft/gpl.html
 // @homepageURL https://github.com/Ecilam/BloodWarsAnalyseRC
 // @supportURL  https://github.com/Ecilam/BloodWarsAnalyseRC/issues
@@ -318,7 +318,7 @@ var DATAS = (function(){
 			return DOM._GetFirstNodeTextContent("//div[@class='stats-player']/a[@class='me']", null);
 			},
 		_Royaume: function(){
-			return DOM._GetFirstNodeTextContent("//div[@class='gameStats']/b[1]", null);
+			return DOM._GetFirstNodeTextContent("//div[@class='gameStats']/div[1]/b", null);
 			},
 	/* Données diverses	*/
 		_GetPage: function(){
