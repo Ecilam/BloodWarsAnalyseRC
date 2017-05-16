@@ -3,7 +3,7 @@
 // ==UserScript==
 // @author		Ecilam
 // @name		Blood Wars Analyse RC
-// @version		2017.04.11
+// @version		2017.05.16
 // @namespace	BWARC
 // @description	Ce script analyse les combats sur Blood Wars.
 // @copyright   2012-2017, Ecilam
@@ -325,26 +325,26 @@ var DATAS = (function(){
 			var p = 'null',
 			// message Serveur (à approfondir)
 				r = DOM._GetFirstNode("//div[@class='komunikat']");
-			if (r!==null){
+			if (r !== null){
 				var r = DOM._GetFirstNodeTextContent(".//u",r);
-				if (r == L._Get('sDeconnecte')) p="pServerDeco";
-				else if (r == L._Get('sCourtePause')) p="pServerUpdate";
+				if (r == L._Get('sDeconnecte')) p = 'pServerDeco';
+				else if (r == L._Get('sCourtePause')) p = 'pServerUpdate';
 				else p="pServerOther";
 				}
 			else{
-				var qsA = DOM._QueryString("a"),
-					qsDo = DOM._QueryString("do"),
-					qsMid = DOM._QueryString("mid"),
+				var qsA = DOM._QueryString('a'),
+					qsDo = DOM._QueryString('do'),
+					qsMid = DOM._QueryString('mid'),
 					path = window.location.pathname;
 				// page extérieur
-				if (path!="/"){
-					if (path=="/showmsg.php"&&qsA===null&&qsMid!==null) p="pShowMsg";
+				if (path != '/'){
+					if (path === '/showmsg.php' && ((qsA === null  && qsMid !== null) || (qsA === 'cevent' && qsMid === null))) p = 'pShowMsg';
 					}
 				// page interne
 				// Salle du Trône
-				else if (qsA===null||qsA=="main") p="pMain";
+				else if (qsA === null || qsA === 'main') p = 'pMain';
 				// Page des messages
-				else if (qsA=="msg"){
+				else if (qsA === 'msg'){
 					var qsType = DOM._QueryString("type");
 					if (qsDo=="view" && qsMid!==null){
 						if (qsType===null||qsType=="1") p="pMsg";
@@ -786,7 +786,6 @@ function AnalyseRC(){
 ******************************************************/
 // vérification des services
 if (!JSON) throw new Error("Erreur : le service JSON n\'est pas disponible.");
-//else if (!window.localStorage) throw new Error("Erreur : le service localStorage n\'est pas disponible.");
 else{
 	var p = DATAS._GetPage();
 if (debug) console.debug('BWARCpage :',p);
