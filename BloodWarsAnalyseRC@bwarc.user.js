@@ -1,10 +1,10 @@
 // coding: utf-8 (sans BOM)
 // ==UserScript==
-// @author		Ecilam
-// @name		Blood Wars Analyse RC
-// @version		2017.06.02
-// @namespace	BWARC
-// @description	Ce script analyse les combats sur Blood Wars.
+// @author      Ecilam
+// @name        Blood Wars Analyse RC
+// @version     2017.06.19
+// @namespace   BWARC
+// @description Ce script analyse les combats sur Blood Wars.
 // @copyright   2012-2017, Ecilam
 // @license     GPL version 3 ou suivantes; http://www.gnu.org/copyleft/gpl.html
 // @homepageURL https://github.com/Ecilam/BloodWarsAnalyseRC
@@ -21,50 +21,80 @@
   "use strict";
   var debugTime = Date.now(); // @type {Date} permet de mesurer le temps d'execution du script.
   var debug = false; // @type {Boolean} Active l'affichage des messages sur la console de débogages.
-  
-  function _Type(v)
+  /**
+   * @method exist
+   * Test l'existence d'une valeur
+   * @param {*} v la valeur à tester
+   * @return {Boolean} faux si 'undefined'
+   */
+  function exist(v)
   {
-    var type = Object.prototype.toString.call(v);
-    return type.slice(8, type.length - 1);
+    return (v !== undefined && typeof v !== 'undefined');
   }
-
-  function _Exist(v)
+  /**
+   * @method isNull
+   * Test si une valeur est Null
+   * @param {*} v la valeur à tester
+   * @return {Boolean} vrai si Null
+   */
+  function isNull(v)
   {
-    return _Type(v) != 'Undefined';
+    return (v === null && typeof v === 'object');
   }
-
-  function clone(o)
+  /**
+   * @method clone
+   * Créé une copie de l'objet
+   * @param {Object} obj
+   * @return {Object} newObjet
+   */
+  function clone(obj)
   {
-    if (typeof o != 'object' || o === null) return o;
-    var newObjet = o.constructor();
-    for (var i in o)
+    if (typeof obj !== 'object' || obj === null)
     {
-      if (o.hasOwnProperty(i)) newObjet[i] = clone(o[i]);
+      return obj;
+    }
+    var newObjet = obj.constructor();
+    for (var i in obj)
+    {
+      newObjet[i] = clone(obj[i]);
     }
     return newObjet;
   }
-  String.prototype.truncate = function (length)
-  {
-    if (this.length > length) return this.slice(0, length - 3) + "...";
-    else return this;
-  };
   /******************************************************
-   * OBJET JSONS - JSON
-   * - stringification des données
+   * OBJET Jsons - JSON
+   * Stringification des données
    ******************************************************/
-  var JSONS = (function ()
+  var Jsons = (function ()
   {
     function reviver(key, v)
     {
-      if (_Type(v) == 'String')
+      if (typeof v === 'string')
       {
         var a = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(?:\.\d*)?)Z$/.exec(v);
-        if (a !== null) return new Date(Date.UTC(+a[1], +a[2] - 1, +a[3], +a[4], +a[5], +a[6]));
+        if (!isNull(a)) return new Date(Date.UTC(Number(a[1]), Number(a[2]) - 1, Number(a[3]), Number(a[
+          4]), Number(a[5]), Number(a[6])));
       }
       return v;
     }
     return {
-      _Decode: function (v)
+      /**
+       * @method init
+       * Fonction d'initialisation.
+       * Vérifie si le service JSON est bien disponible.
+       * @return {Objet}
+       */
+      init: function ()
+      {
+        if (!JSON) throw new Error("Erreur : le service JSON n\'est pas disponible.");
+        else return this;
+      },
+      /**
+       * @method decode
+       * Désérialise une chaîne JSON.
+       * @param {JSON} v - chaîne JSON à décoder.
+       * @return {?*} r la valeur décodée sinon null.
+       */
+      decode: function (v)
       {
         var r = null;
         try
@@ -73,176 +103,241 @@
         }
         catch (e)
         {
-          console.error('JSONS_Decode error :', v, e);
+          console.error('Jsons.decode error :', v, e);
         }
         return r;
       },
-      _Encode: function (v)
+      /**
+       * @method encode
+       * Sérialise un objet au format JSON.
+       * @param {*} v - la valeur à encoder.
+       * @return {JSON} une chaîne au format JSON.
+       */
+      encode: function (v)
       {
         return JSON.stringify(v);
       }
     };
-  })();
+  })().init();
   /******************************************************
    * OBJET GM - GreaseMonkey Datas Storage
    ******************************************************/
   var GM = (function ()
   {
     return {
-      _GetVar: function (key, defaut)
+      /**
+       * @method get
+       * Retourne la valeur de key ou sinon la valeur par défaut.
+       * @param {String} key - la clé recherchée.
+       * @param {*} defVal - valeur par défaut.
+       * @return {*} val|defVal
+       */
+      get: function (key, defVal)
       {
         var v = GM_getValue(key, null);
-        return (v !== null ? JSONS._Decode(v) : defaut);
+        return (!isNull(v) ? Jsons.decode(v) : defVal);
       },
-      _SetVar: function (key, v)
+      /**
+       * @method set
+       * Ajoute/remplace la valeur de la clé concernée.
+       * @param {String} key - la clé.
+       * @param {*} val
+       * @return {*} val
+       */
+      set: function (key, val)
       {
-        GM_setValue(key, JSONS._Encode(v));
-        return v;
+        GM_setValue(key, Jsons.encode(val));
+        return val;
       }
     };
   })();
   /******************************************************
    * OBJET DOM - Fonctions DOM & QueryString
-   * -  DOM : fonctions d'accès aux noeuds du document
-   * - _QueryString : accès aux arguments de l'URL
+   * - fonctions d'accès aux noeuds basées sur Xpath
+   * - fonctions de création de noeuds et event
+   * - gueryString : accès aux arguments de l'URL
    ******************************************************/
   var DOM = (function ()
   {
     return {
-      _GetNodes: function (path, root)
+      /**
+       * @method getNodes
+       * Cherche un ensemble de noeuds correspondant à la recherche.
+       * Accès à chaque noeud par la méthode snapshotItem(itemNumber)
+       * @param {xpathExpression} path - chemin au format Xpath
+       * @param {contextNode} [root=document] - noeud servant de base à la recherche
+       * @return {?XPathResult=null} ensemble statique de noeuds (vide si aucun résultat)
+       */
+      getNodes: function (path, root)
       {
-        return (_Exist(root) && root === null) ? null : document.evaluate(path, (_Exist(root) ? root : document), null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+//if (debug) console.debug('BWARc : ', path, exist(root) ? root:null);
+        return document.evaluate(path, (exist(root) ? root : document), null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
       },
-      _GetFirstNode: function (path, root)
+      /**
+       * @method getFirstNode
+       * Retourne le 1er noeud correspondant à la recherche
+       * @param {xpathExpression} path - chemin au format Xpath
+       * @param {contextNode} [root=document] - noeud servant de base à la recherche
+       * @return {?Element=null} noeud ou null si aucun résultat
+       */
+      getFirstNode: function (path, root)
       {
-        var r = this._GetNodes(path, root);
-        return (r !== null && r.snapshotLength >= 1 ? r.snapshotItem(0) : null);
+        var r = this.getNodes(path, root);
+        return (r.snapshotLength > 0 ? r.snapshotItem(0) : null);
       },
-      _GetLastNode: function (path, root)
+      /**
+       * @method getLastNode
+       * Retourne le dernier noeud correspondant à la recherche
+       * @param {xpathExpression} path - chemin au format Xpath
+       * @param {contextNode} [root=document] - noeud servant de base à la recherche
+       * @return {?Element=null} noeud ou null si aucun résultat
+       */
+      getLastNode: function (path, root)
       {
-        var r = this._GetNodes(path, root);
-        return (r !== null && r.snapshotLength >= 1 ? r.snapshotItem(r.snapshotLength - 1) : null);
+        var r = this.getNodes(path, root);
+        return (r.snapshotLength > 0 ? r.snapshotItem(r.snapshotLength - 1) : null);
       },
-      _GetFirstNodeTextContent: function (path, defaultValue, root)
+      /**
+       * @method getFirstNodeTextContent
+       * Retourne le textContent du 1er noeud correspondant à la recherche
+       * @param {xpathExpression} path - chemin au format Xpath
+       * @param {String} defVal - valeur par défaut
+       * @param {contextNode} [root=document] - noeud servant de base à la recherche
+       * @return {textContent=defVal}
+       */
+      getFirstNodeTextContent: function (path, defVal, root)
       {
-        var r = this._GetFirstNode(path, root);
-        return (r !== null && r.textContent !== null ? r.textContent : defaultValue);
+        var r = this.getFirstNode(path, root);
+        return (!isNull(r) && !isNull(r.textContent) ? r.textContent : defVal);
       },
-      _GetFirstNodeInnerHTML: function (path, defaultValue, root)
+      /**
+       * @method getLastNodeInnerHTML
+       * Retourne le InnerHTML du dernier noeud correspondant à la recherche
+       * @param {xpathExpression} path - chemin au format Xpath
+       * @param {String} defVal - valeur par défaut
+       * @param {contextNode} [root=document] - noeud servant de base à la recherche
+       * @return {textContent=defVal}
+       */
+      getLastNodeInnerHTML: function (path, defVal, root)
       {
-        var r = this._GetFirstNode(path, root);
-        return (r !== null && r.innerHTML !== null ? r.innerHTML : defaultValue);
+        var r = this.getLastNode(path, root);
+        return (!isNull(r) && !isNull(r.innerHTML) ? r.innerHTML : defVal);
       },
-      _GetLastNodeInnerHTML: function (path, defaultValue, root)
+      /**
+       * @method addEvent
+       * Assigne un gestionnaire d'évènement à un noeud
+       * @example call
+       * DOM.addEvent(result,'click',fn,'2');
+       * @example listener 
+       * // this = node, e = event
+       * function fn(e,par) {alert('Event : ' + this.value + e.type + par);}
+       * @param {contextNode} node - noeud utilisé
+       * @param {String} type - type d'évènement à enregistrer
+       * @param {Function} fn - fonction recevant la notification
+       * @param {*} par - paramètres à passer
+       */
+      addEvent: function (node, type, fn, par)
       {
-        var r = this._GetLastNode(path, root);
-        return (r !== null && r.innerHTML !== null ? r.innerHTML : defaultValue);
+        var funcName = function (e)
+        {
+          return fn.call(node, e, par);
+        };
+        node.addEventListener(type, funcName, false);
+        if (!node.BWARCListeners) { node.BWARCListeners = {}; }
+        if (!node.BWARCListeners[type]) node.BWARCListeners[type] = {};
+        node.BWARCListeners[type][fn.name] = funcName;
       },
-      _QueryString: function (key)
+      /**
+       * @method removeEvent
+       * Supprime un gestionnaire d'évènement à un noeud
+       * @example call
+       * DOM.removeEvent(node,'click',fn);
+       * @param {contextNode} node - noeud utilisé
+       * @param {String} type - type d'évènement à enregistrer
+       * @param {Function} fn - fonction recevant la notification
+       * @param {*} par - paramètres à passer
+       */
+      removeEvent: function (node, type, fn)
+      {
+        if (node.BWARCListeners[type] && node.BWARCListeners[type][fn.name])
+        {
+          node.removeEventListener(type, node.BWARCListeners[type][fn.name], false);
+          delete node.BWARCListeners[type][fn.name];
+        }
+      },
+      /**
+       * @method newNode
+       * Créé un noeud à partir d'une description
+       * @example
+       * DOM.newNode('input', { 'type': 'checkbox', 'checked': true }, ['texte'],
+                    {'click': [funcname, param]}, parentNode);
+       * @param {String} type - balise html
+       * @param {{...Objet}} attributes - liste des attributs
+       * @param {String[]} content - texte
+       * @param {{...[funcname, param]}} events - événements attachés à ce noeud
+       * @param {Node} parent - noeud parent
+       * @return {Node} node
+       */
+      newNode: function (type, attributes, content, events, parent)
+      {
+        var node = document.createElement(type);
+        for (var key in attributes)
+        {
+          if (attributes.hasOwnProperty(key))
+          {
+            if (typeof attributes[key] !== 'boolean') node.setAttribute(key, attributes[key]);
+            else if (attributes[key] === true) node.setAttribute(key, key.toString());
+          }
+        }
+        for (key in events)
+        {
+          if (events.hasOwnProperty(key))
+          {
+            this.addEvent(node, key, events[key][0], events[key][1]);
+          }
+        }
+        for (var i = 0; i < content.length; i++)
+        {
+          node.textContent += content[i];
+        }
+        if (!isNull(parent)) parent.appendChild(node);
+        return node;
+      },
+      /**
+       * @method newNodes
+       * Créé en ensemble de noeuds à partir d'une liste descriptive
+       * @param {[...Array]} list - décrit un ensemble de noeuds (cf newNode)
+       * @param {{...Objet}} [base] - précédent ensemble
+       * @return {{...Objet}} nodes - liste des noeuds
+       */
+      newNodes: function (list, base)
+      {
+        var nodes = exist(base) ? base : {};
+        for (var i = 0; i < list.length; i++)
+        {
+          var node = exist(nodes[list[i][5]]) ? nodes[list[i][5]] : list[i][5];
+          nodes[list[i][0]] = this.newNode(list[i][1], list[i][2],
+            list[i][3], list[i][4], node);
+        }
+        return nodes;
+      },
+      /**
+       * @method queryString
+       * retourne la valeur de la clé "key" trouvé dans l'url
+       * null: n'existe pas, true: clé existe mais sans valeur, autres: valeur
+       * @param {String} key
+       * @return {String} offset
+       */
+      queryString: function (key)
       {
         var url = window.location.search,
-          reg = new RegExp("[?&]" + key + "(=([^&$]+)|)(&|$)", "i"),
+          reg = new RegExp('[?&]' + key + '(=([^&$]+)|)(&|$)', 'i'),
           offset = reg.exec(url);
-        if (offset !== null)
+        if (!isNull(offset))
         {
-          offset = _Exist(offset[2]) ? offset[2] : true;
+          offset = exist(offset[2]) ? offset[2] : true;
         }
         return offset;
-      }
-    };
-  })();
-  /******************************************************
-   * OBJET IU - Interface Utilisateur
-   ******************************************************/
-  var IU = (function ()
-  {
-    return {
-      _CreateElements: function (list, oldList)
-      {
-        var r = _Exist(oldList) ? oldList : {};
-        for (var key in list)
-        {
-          if (list.hasOwnProperty(key))
-          {
-            var type = _Exist(list[key][0]) ? list[key][0] : null,
-              attributes = _Exist(list[key][1]) ? list[key][1] : {},
-              content = _Exist(list[key][2]) ? list[key][2] : [],
-              events = _Exist(list[key][3]) ? list[key][3] : {},
-              node = _Exist(r[list[key][4]]) ? r[list[key][4]] : (_Exist(list[key][4]) ? list[key][4] : null);
-            if (type !== null) r[key] = this._CreateElement(type, attributes, content, events, node);
-          }
-        }
-        return r;
-      },
-      _CreateElement: function (type, attributes, content, events, node)
-      {
-        if (_Exist(type) && type !== null)
-        {
-          attributes = _Exist(attributes) ? attributes : {};
-          content = _Exist(content) ? content : [];
-          events = _Exist(events) ? events : {};
-          node = _Exist(node) ? node : null;
-          var r = document.createElement(type);
-          for (var key in attributes)
-          {
-            if (attributes.hasOwnProperty(key))
-            {
-              if (_Type(attributes[key]) != 'Boolean') r.setAttribute(key, attributes[key]);
-              else if (attributes[key] === true) r.setAttribute(key, key.toString());
-            }
-          }
-          for (key in events)
-          {
-            if (events.hasOwnProperty(key))
-            {
-              this._addEvent(r, key, events[key][0], events[key][1]);
-            }
-          }
-          for (var i = 0; i < content.length; i++)
-          {
-            if (_Type(content[i]) === 'Object') r.appendChild(content[i]);
-            else r.textContent += content[i];
-          }
-          if (node !== null) node.appendChild(r);
-          return r;
-        }
-        else return null;
-      },
-      _addEvent: function (obj, type, fn, par)
-      {
-        var funcName = function (event) { return fn.call(obj, event, par); };
-        obj.addEventListener(type, funcName, false);
-        if (!obj.BWARCListeners) { obj.BWARCListeners = {}; }
-        if (!obj.BWARCListeners[type]) obj.BWARCListeners[type] = {};
-        obj.BWARCListeners[type][fn.name] = funcName;
-      },
-      _removeEvent: function (obj, type, fn)
-      {
-        if (obj.BWARCListeners[type] && obj.BWARCListeners[type][fn.name])
-        {
-          obj.removeEventListener(type, obj.BWARCListeners[type][fn.name], false);
-          delete obj.BWARCListeners[type][fn.name];
-        }
-      },
-      _removeEvents: function (obj)
-      {
-        if (obj.BWARCListeners)
-        {
-          for (var key in obj.BWARCListeners)
-          {
-            if (obj.BWARCListeners.hasOwnProperty(key))
-            {
-              for (var key2 in obj.BWARCListeners[key])
-              {
-                if (obj.BWARCListeners[key].hasOwnProperty(key2))
-                {
-                  obj.removeEventListener(key, obj.BWARCListeners[key][key2], false);
-                }
-              }
-            }
-          }
-          delete obj.BWARCListeners;
-        }
       }
     };
   })();
@@ -266,9 +361,9 @@
       // tri
       "sTriUp": ["▲"],
       "sTriDown": ["▼"],
-      "sTriNbTest": ["^([0-9]+(?:\\.[0-9]*)?)$"],
-      "sTriNbTest2": ["^[0-9]+ \\(([0-9]+)\\%\\)$"],
-      "sTriNbTest3": ["^[0-9]+\\/[0-9]+ \\(([0-9]+)\\%\\)$"],
+      "sTriNb1": ["^([0-9]+(?:\\.[0-9]*)?)$"],
+      "sTriNb2": ["^([0-9]+)\\/([0-9]+)$"],
+      "sTriNb3": ["^\\(([0-9]+)\\%\\)$"],
       //RC
       "sRCname": ["^([^\\(]+)(?: \\(\\*\\))?(?: \\(@\\))?$"],
       "sRCsum1": ["(.+)<br>(.+)"],
@@ -295,10 +390,17 @@
       "sRCLeach": ["^<b[^<>]*>([^<>]+)<\\/b> perd <b[^<>]*>(\\d+)<\\/b> PTS DE VIE\\.$",
 					"^<b[^<>]*>([^<>]+)<\\/b> loses <b[^<>]*>(\\d+)<\\/b> HP\\.$",
 					"^<b[^<>]*>([^<>]+)<\\/b> traci <b[^<>]*>(\\d+)<\\/b> PKT KRWI\\.$"],
-      "sRCTitle1": ["ANALYSE DU COMBAT", "ANALYSIS OF BATTLE", "ANALIZA BITWY"],
-      "sRCTitle2": ["DOMMAGES / MANCHE", "DAMAGE / ROUND", "SZKÓD / RUNDA"],
-      "sRCTitle3": ["INITIATIVE / MANCHE", "INITIATIVE / ROUND", "INICJATYWA / RUNDA"],
-      "sRCTFight": ["Combat", "Fight", "Walka"],
+      "sOverStick": [" (clic pour fixer)",],
+      "sOpt": ["Options", , "Opcje"],
+      "sOpt1": ["Grouper les tableaux par combats : ", "Grouping Fighting Tables : ", "Grupowanie obrazy walk : "],
+      "sYes": ["Oui", "Yes", "tak"],
+      "sNo": ["Non", "No", "Nie"],
+      "sOpt4": ["Tableaux : ", "Tables : ", "tabele : "],
+      "sOpt5": ["Analyse", "Analysis", "Analiza"],
+      "sOpt6": ["Dommages", "Damage", "Szkód"],
+      "sOpt7": ["Initiative", "Initiative", "Inicjatywa"],
+      "sRCTFight": ["Combat $1", "Fight $1", "Walka $1"],
+      "sRCround": ["Manche", "Round", "Runda"],
       "sRCTAtt": ["Attaque", "Attack", "Atak"],
       "sRCTDmg": ["Dommages", "Damage", "Szkód"],
       "sRCTDef": ["Défense", "Defence", "Obrona"],
@@ -317,7 +419,7 @@
       "sRCTLose": ["-"],
       "sRCTWin": ["+"],
       "sRCTRd": ["Rnd", "Rnd", "Rnd"],
-      "%": ["%"]
+      "sRCperc": ["\(\%\)"],
     };
     var langue; // 0 = français par défaut, 1 = anglais, 2 = polonais
     if (/^http\:\/\/r[0-9]*\.fr\.bloodwars\.net/.test(location.href)) langue = 0;
@@ -325,17 +427,23 @@
     else if (/^http\:\/\/r[0-9]*\.bloodwars\.interia\.pl/.test(location.href) || /^http\:\/\/beta[0-9]*\.bloodwars\.net/.test(location.href)) langue = 2;
     else langue = 0;
     return {
-      //public stuff
-      // Retourne la chaine ou l'expression traduite.
-      // Remplace les éléments $1,$2... par les arguments transmis en complément.
-      // Le caractère d'échappement '\' doit être doublé pour être pris en compte dans une expression régulière.
-      // ex: "test": ["<b>$2<\/b> a tué $1 avec $3.",]
-      // L._Get('test','Dr Moutarde','Mlle Rose','le chandelier'); => "<b>Mlle Rose<\/b> a tué le Dr Moutarde avec le chandelier."
-      _Get: function (key)
+      /**
+       * @method get
+       * Retourne la chaine ou l'expression traduite
+       * Remplace les éléments $1,$2... par les arguments transmis en complément.
+       * Le caractère d'échappement '\' doit être doublé pour être pris en compte dans une expression régulière
+       * @example "test": ["<b>$2<\/b> a tué $1 avec $3.",]
+       * L.get('test','Dr Moutarde','Mlle Rose','le chandelier');
+       * => "<b>Mlle Rose<\/b> a tué le Dr Moutarde avec le chandelier."
+       * @param {String} key
+       * @param {...String} [arguments]
+       * @return {String} offset
+       */
+      get: function (key)
       {
         var r = locStr[key];
-        if (!_Exist(r)) throw new Error("L::Error:: la clé n'existe pas : " + key);
-        if (_Exist(r[langue])) r = r[langue];
+        if (!exist(r)) throw new Error("L::Error:: la clé n'existe pas : " + key);
+        if (exist(r[langue])) r = r[langue];
         else r = r[0];
         for (var i = arguments.length - 1; i >= 1; i--)
         {
@@ -347,56 +455,60 @@
     };
   })();
   /******************************************************
-   * OBJET DATAS - Fonctions d'accès aux données de la page
+   * OBJET G - Fonctions d'accès aux données de la page
    * Chaque fonction retourne 'null' en cas d'échec
    ******************************************************/
-  var DATAS = (function ()
+  var G = (function ()
   {
     return {
-      /* données du joueur */
-      _PlayerName: function ()
+      /**
+       * @method playerName
+       * retourne le nom du joueur
+       * @return {String|null}
+       */
+      playerName: function ()
       {
-        return DOM._GetFirstNodeTextContent("//div[@class='stats-player']/a[@class='me']", null);
+        return DOM.getFirstNodeTextContent("//div[@class='stats-player']/a[@class='me']", null);
       },
-      _Royaume: function ()
+      /**
+       * @method royaume
+       * retourne le nom du serveur
+       * @return {String|null}
+       */
+      royaume: function ()
       {
-        return DOM._GetFirstNodeTextContent("//div[@class='gameStats']/div[1]/b", null);
+        return DOM.getFirstNodeTextContent("//div[@class='gameStats']/div[1]/b", null);
       },
-      /* Données diverses	*/
-      _GetPage: function ()
+      /**
+       * @method page
+       * Identifie la page et retourne son id
+       * @return {String|null} p
+       */
+      page: function ()
       {
-        var p = 'null',
-          // message Serveur (à approfondir)
-          r = DOM._GetFirstNode("//div[@class='komunikat']");
-        if (r !== null)
+        var p = 'null';
+        //  ce n'est pas un message Serveur
+        if (isNull(DOM.getFirstNode("//div[@class='komunikat']")))
         {
-          var r = DOM._GetFirstNodeTextContent(".//u", r);
-          if (r == L._Get('sDeconnecte')) p = 'pServerDeco';
-          else if (r == L._Get('sCourtePause')) p = 'pServerUpdate';
-          else p = "pServerOther";
-        }
-        else
-        {
-          var qsA = DOM._QueryString('a'),
-            qsDo = DOM._QueryString('do'),
-            qsMid = DOM._QueryString('mid'),
-            path = window.location.pathname;
+          var qsA = DOM.queryString('a');
+          var qsDo = DOM.queryString('do');
+          var qsMid = DOM.queryString('mid');
+          var path = window.location.pathname;
           // page extérieur
           if (path != '/')
           {
             if (path === '/showmsg.php' && ((qsA === null && qsMid !== null) || (qsA === 'cevent' && qsMid === null))) p = 'pShowMsg';
           }
-          // page interne
           // Salle du Trône
           else if (qsA === null || qsA === 'main') p = 'pMain';
           // Page des messages
           else if (qsA === 'msg')
           {
-            var qsType = DOM._QueryString("type");
-            if (qsDo == "view" && qsMid !== null)
+            var qsType = DOM.queryString("type");
+            if (qsDo === "view" && qsMid !== null)
             {
-              if (qsType === null || qsType == "1") p = "pMsg";
-              else if (qsType == "2") p = "pMsgSave";
+              if (qsType === null || qsType === '1') p = "pMsg";
+              else if (qsType === '2') p = "pMsgSave";
             }
           }
         }
@@ -405,618 +517,842 @@
     };
   })();
   /******************************************************
-   * OBJET PREF - Gestion des préférences
+   * OBJET U - fonctions d'accès aux données utilisateur.
+   *
    ******************************************************/
-  var PREF = (function ()
+  var U = (function ()
   {
-    // préfèrences par défaut
-    var index = 'BWARC:O:',
-      defPrefs = { 'RC': { 'sh0': 1, 'sh1': 1, 'sh2': 1, 'sh3': 1, 'tr1': [1, 1], 'tr2': [1, 1], 'tr3': [1, 1] } },
-      ID = null,
-      prefs = {};
+    var defPref = { 'show': true, 'shO': true, 'mode': '1', 'tab1': true, 'tab2': true, 'tab3': true, 'tr1': [1, 0], 'tr2': [1, 0], 'tr3': [1, 0] };
+    var pref = {};
+    var ids = GM.get('BWARC:IDS', {});
+    var lastID = GM.get('BWARC:LASTID', null);
+    var id = null;
     return {
-      _Init: function (id)
+      user: false,
+      /**
+       * @method init
+       * Fonction d'initialisation de l'objet User.
+       * Identifie l'utilisateur et ses paramètres (name, id, pref).
+       * @return {Objet}
+       */
+      init: function ()
       {
-        ID = id;
-        prefs = GM._GetVar(index + ID, {});
-      },
-      _Get: function (grp, key)
-      {
-        if (_Exist(prefs[grp]) && _Exist(prefs[grp][key])) return prefs[grp][key];
-        else if (_Exist(defPrefs[grp]) && _Exist(defPrefs[grp][key])) return defPrefs[grp][key];
-        else return null;
-      },
-      _Set: function (grp, key, v)
-      {
-        if (ID !== null)
+        var player = G.playerName();
+        var realm = G.royaume();
+        var page = G.page();
+        if (!isNull(player) && !isNull(realm) && page === 'pMain')
         {
-          if (!_Exist(prefs[grp])) prefs[grp] = {};
-          prefs[grp][key] = v;
-          GM._SetVar(index + ID, prefs);
+          var refLink = DOM.getFirstNodeTextContent(
+            "//div[@id='content-mid']/div[@id='reflink']/span[@class='reflink']", null);
+          if (!isNull(refLink))
+          {
+            var ref = /r\.php\?r=([0-9]+)/.exec(refLink);
+            if (!isNull(ref))
+            {
+              for (var i in ids)
+              {
+                if (ids[i] === ref[1]) delete ids[i]; // en cas de changement de nom
+              }
+              ids[realm + ':' + player] = ref[1];
+              GM.set('BWARC:IDS', ids);
+              lastID = GM.set('BWARC:LASTID', realm + ':' + ref[1]);
+            }
+          }
+        }
+        if (!isNull(player) && !isNull(realm) && exist(ids[realm + ':' + player]))
+        {
+          id = realm + ':' + ids[realm + ':' + player];
+        }
+        else if (!isNull(lastID))
+        {
+          id = lastID;
+        }
+        if (!isNull(id))
+        {
+          this.user = true;
+          var prefTmp = GM.get('BWARC:O:' + id, {});
+          for (var i in defPref)
+          {
+            pref[i] = exist(prefTmp[i]) ? prefTmp[i] : clone(defPref[i]);
+          }
+        }
+        return this;
+      },
+      /**
+       * @method getP
+       * Retourne la valeur d'une préférence utilisateur.
+       * @param {String} key
+       * @return {*} val
+       */
+      getP: function (key)
+      {
+        if (exist(pref[key]))
+        {
+          return clone(pref[key]);
+        }
+        else
+        {
+          throw new Error("Erreur : clé de préférence inconnue.");
         }
       },
+      /**
+       * @method getDefP
+       * Retourne la valeur par défaut d'une préférence utilisateur.
+       * @param {String} key
+       * @return {*} val
+       */
+      getDefP: function (key)
+      {
+        if (exist(defPref[key]))
+        {
+          return clone(defPref[key]);
+        }
+        else
+        {
+          throw new Error("Erreur : clé de préférence inconnue.");
+        }
+      },
+      /**
+       * @method setP
+       * Sauvegarde la valeur d'une préférence utilisateur.
+       * @param {String} key
+       * @param {*} val
+       * @return {*} val
+       */
+      setP: function (key, val)
+      {
+        if (exist(pref[key]))
+        {
+          pref[key] = clone(val);
+          GM.set('BWARC:O:' + id, pref);
+          return val;
+        }
+        else
+        {
+          throw new Error("Erreur : clé de préférence inconnue.");
+        }
+      },
+      /**
+       * @method razP
+       * Reset la valeur d'une préférence utilisateur.
+       * @param {String} key
+       * @return {*} val
+       */
+      razP: function (key)
+      {
+        if (exist(pref[key]))
+        {
+          pref[key] = defPref[key];
+          GM.set('BWARC:O:' + id, pref);
+          return clone(pref[key]);
+        }
+        else
+        {
+          throw new Error("Erreur : clé de préférence inconnue.");
+        }
+      },
+      /**
+       * @method razAllP
+       * Reset des préférences utilisateur.
+       * @return {*} val
+       */
+      razAllP: function ()
+      {
+        pref = defPref;
+        GM.set('BWARC:O:' + id, pref);
+      },
+      /**
+       * @method getD
+       * Retourne les données liées à l'utilisateur.
+       * @param {String} key
+       * @param {*} defVal - valeur par défaut
+       * @return {*} val|defVal
+       */
+      getD: function (key, defVal)
+      {
+        return GM.get('BWARC:' + key + ':' + id, defVal);
+      },
+      /**
+       * @method setD
+       * Sauvegarde des données liées à l'utilisateur.
+       * @param {String} key
+       * @param {*} val
+       * @return {*} val
+       */
+      setD: function (key, val)
+      {
+        return GM.set('BWARC:' + key + ':' + id, val);
+      }
     };
-  })();
+  })().init();
   /******************************************************
-   * CSS
+   * CSS - Initialisation des styles propre à ce script.
+   * Note : la commande init est appelée automatiquement.
    ******************************************************/
-  function getCssRules(selector, sheet)
+  var CSS = (function ()
   {
-    var sheets = _Exist(sheet) ? [sheet] : document.styleSheets;
-    for (var i = 0; i < sheets.length; i++)
+    function getCssRules(selector, css)
     {
-      var sheet = sheets[i];
-      try
+      var sheets = exist(css) ? [css] : document.styleSheets;
+      for (var i = 0; i < sheets.length; i++)
       {
-        if (!sheet.cssRules) return null;
+        var sheet = sheets[i];
+        try
+        {
+          if (!sheet.cssRules) return null;
+        }
+        catch (e)
+        {
+          if (e.name !== 'SecurityError') throw e;
+          return null;
+        }
+        for (var j = 0; j < sheet.cssRules.length; j++)
+        {
+          var rule = sheet.cssRules[j];
+          if (rule.selectorText && rule.selectorText.split(',').indexOf(selector) !== -1) return rule.style;
+        }
       }
-      catch (e)
-      {
-        if (e.name !== 'SecurityError') throw e;
-        return null;
-      }
-      for (var j = 0; j < sheet.cssRules.length; j++)
-      {
-        var rule = sheet.cssRules[j];
-        if (rule.selectorText && rule.selectorText.split(',').indexOf(selector) !== -1) return rule.style;
-      }
+      return null;
     }
-    return null;
-  }
-
-  function SetCSS()
-  {
     var css = [
-		".BWARCLeft{text-align: left;}",
-		".BWARCRight{text-align: right;}",
-		".BWARCMiddle{text-align: center;}",
-		".BWARCtri{color:lime;}",
-		".BWARCspan{width: 100%;font-weight:700;}",
-		".BWARCT{width: 100%;text-align: center;}", //table-layout: fixed;
-		".BWARCT th{border:thin dotted black;padding:1px;white-space:nowrap;}",
-		".BWARCT td{padding:1px;white-space:nowrap;}", //width: 100%;text-overflow: ellipsis;-o-text-overflow: ellipsis;overflow: hidden;
-		".BWARCbold{font-weight:700;}",
-		"#BWARC1c th,#BWARC2c th,#BWARC3c th,.BWARCspan {cursor: pointer;}"],
-      head = DOM._GetFirstNode("//head");
-    if (head !== null)
-    {
-      var even = getCssRules('.even'),
-        selectedItem = getCssRules('.selectedItem');
-      if (even !== null && selectedItem !== null) css.push('.BWARCeven{' + even.cssText + '}', '.BWARCtr:hover{' + selectedItem.cssText + '}');
-      IU._CreateElement('style', { 'type': 'text/css' }, [css.join('')], {}, head);
-    }
-  }
+      ".BWARCleft{text-align: left;}",
+      ".BWARCmid{text-align: center;}",
+      ".BWARCtri{color:lime;}",
+      ".BWARCspan{font-weight:700;}",
+      ".BWARCT{width: 100%;}",
+      ".BWARCT tr{text-align: right;}",
+      ".BWARCT th, .BWARCT td{border:thin dotted black;padding:1px;white-space:nowrap;}",
+      ".BWARCbold{font-weight:700;}",
+      ".BWARCtitle th, .BWARCspan{cursor: pointer;}"
+      ];
+    return {
+      /**
+       * @method init
+       * Fonction d'initialisation du CSS.
+       */
+      init: function ()
+      {
+        var head = DOM.getFirstNode("//head");
+        if (head !== null)
+        {
+          var even = getCssRules('.even');
+          var selectedItem = getCssRules('.selectedItem');
+          if (even !== null && selectedItem !== null) css.push('.BWARCeven{' + even.cssText + '}',
+            '.BWARCtr:hover{' + selectedItem.cssText + '}');
+          DOM.newNode('style', { 'type': 'text/css' }, [css.join('')], {}, head);
+        }
+      }
+    };
+  })().init();
   /******************************************************
    * FUNCTIONS
    ******************************************************/
-  function FctTriA(key, order, tbody, list)
-  {
-    var list2 = [];
-    for (var i = 0; i < list.snapshotLength; i++)
-    {
-      var col = DOM._GetFirstNode(".//td[" + key + "]", list.snapshotItem(i));
-      if (col !== null)
-      {
-        var v = col.textContent.trim().toLowerCase();
-        if (key != 1)
-        {
-          var r1 = new RegExp(L._Get('sTriNbTest')).exec(v);
-          var r2 = new RegExp(L._Get('sTriNbTest2')).exec(v);
-          var r3 = new RegExp(L._Get('sTriNbTest3')).exec(v);
-          v = r1 !== null ? parseFloat(r1[1]) : r2 !== null ? Math.round(r2[1]) : r3 !== null ? Math.round(r3[1]) : Number.POSITIVE_INFINITY;
-        }
-        list2[i] = [v, i];
-      }
-    }
-    list2.sort(function (a, b) { return a[0] < b[0] ? -1 : a[0] == b[0] ? 0 : 1; });
-    if (order === 0) list2.reverse();
-    for (var i = 0; i < list2.length; i++)
-    {
-      var r = list.snapshotItem(list2[i][1]);
-      r.classList.add('BWARCtr');
-      if (i % 2 === 0) r.classList.remove('BWARCeven');
-      else r.classList.add('BWARCeven');
-      tbody.appendChild(r);
-    }
-  }
-
   function AnalyseRC()
   {
+    function CreateOverlib(e, i)
+    { // i[combat, key, round (0 pour Total)] list[i[0]][i[1]][i[2]]
+      var d = list[i[0]][i[1]][i[2]];
+      var nb = d.hit + d.fail + d.esq;
+      var nb2 = d.hit + d.fail;
+      var nb3 = d.dnb - d.desq;
+      var overIU = DOM.newNodes([
+        ['root', 'div', { 'align': 'center', 'style': msgContent.getAttribute('style') }, [], {}, null],
+        ['table', 'table', { 'class': 'BWARCT' }, [], {}, 'root'],
+        ['thead', 'thead', {}, [], {}, 'table'],
+        ['tr1', 'tr', { 'class': 'tblheader' }, [], {}, 'thead'],
+        ['th1_1', 'th', { 'class': 'BWARCmid', 'colspan': '7' }, [L.get('sRCTAtt')], {}, 'tr1'],
+        ['th1_2', 'th', { 'class': 'BWARCmid', 'colspan': '3' }, [L.get('sRCTDmg')], {}, 'tr1'],
+        ['th1_3', 'th', { 'class': 'BWARCmid', 'colspan': '5' }, [L.get('sRCTDef')], {}, 'tr1'],
+        ['th1_4', 'th', { 'class': 'BWARCmid', 'colspan': '2' }, [L.get('sRCTPV')], {}, 'tr1'],
+        ['tr2', 'tr', { 'class': 'tblheader' }, [], {}, 'thead'],
+        ['th2_1', 'th', { 'style': 'width:5%' }, [L.get('sRCTNb')], {}, 'tr2'],
+        ['th2_2', 'th', { 'style': 'width:5%' }, [L.get('sRCTEsq')], {}, 'tr2'],
+        ['th2_3', 'th', { 'style': 'width:5%', 'class': 'BWARCleft' }, [L.get('sRCperc')], {}, 'tr2'],
+        ['th2_4', 'th', { 'style': 'width:5%' }, [L.get('sRCTHit')], {}, 'tr2'],
+        ['th2_5', 'th', { 'style': 'width:5%', 'class': 'BWARCleft' }, [L.get('sRCperc')], {}, 'tr2'],
+        ['th2_6', 'th', { 'style': 'width:5%' }, [L.get('sRCTCC')], {}, 'tr2'],
+        ['th2_7', 'th', { 'style': 'width:5%', 'class': 'BWARCleft' }, [L.get('sRCperc')], {}, 'tr2'],
+        ['th2_8', 'th', { 'style': 'width:7%' }, [L.get('sRCTMin')], {}, 'tr2'],
+        ['th2_9', 'th', { 'style': 'width:7%' }, [L.get('sRCTMax')], {}, 'tr2'],
+        ['th2_10', 'th', { 'style': 'width:7%' }, [L.get('sRCTMoy')], {}, 'tr2'],
+        ['th2_11', 'th', { 'style': 'width:5%' }, [L.get('sRCTNb')], {}, 'tr2'],
+        ['th2_12', 'th', { 'style': 'width:5%' }, [L.get('sRCTEsq')], {}, 'tr2'],
+        ['th2_13', 'th', { 'style': 'width:5%', 'class': 'BWARCleft' }, [L.get('sRCperc')], {}, 'tr2'],
+        ['th2_14', 'th', { 'style': 'width:5%' }, [L.get('sRCTFail')], {}, 'tr2'],
+        ['th2_15', 'th', { 'style': 'width:5%', 'class': 'BWARCleft' }, [L.get('sRCperc')], {}, 'tr2'],
+        ['th2_16', 'th', { 'style': 'width:7%' }, [L.get('sRCTLose')], {}, 'tr2'],
+        ['th2_17', 'th', { 'style': 'width:7%' }, [L.get('sRCTWin')], {}, 'tr2'],
+        ['tbody', 'tbody', {}, [], {}, 'table'],
+        ['tr3', 'tr', { 'class': 'tblheader' }, [], {}, 'tbody'],
+        ['td3_1', 'td', { 'class': 'atkHit' }, [nb], {}, 'tr3'],
+        ['td3_2', 'td', { 'class': 'atkHit' }, [d.esq], {}, 'tr3'],
+        ['td3_3', 'td', { 'class': 'atkHit BWARCleft' }, ['(' + (nb > 0 ? Math.round(d.esq / nb * 100) : 0) + '%)'], {}, 'tr3'],
+        ['td3_4', 'td', { 'class': 'atkHit' }, [d.hit + '/' + nb2], {}, 'tr3'],
+        ['td3_5', 'td', { 'class': 'atkHit BWARCleft' }, [' (' + (nb2 > 0 ? Math.round(d.hit / nb2 * 100) : 0) + '%)'], {}, 'tr3'],
+        ['td3_6', 'td', { 'class': 'atkHit' }, [d.cc + '/' + d.hit], {}, 'tr3'],
+        ['td3_7', 'td', { 'class': 'atkHit BWARCleft' }, [' (' + (d.hit > 0 ? Math.round(d.cc / d.hit * 100) : 0) + '%)'], {}, 'tr3'],
+        ['td3_8', 'td', {}, [(d.hit > 0 ? d.dmin : '-')], {}, 'tr3'],
+        ['td3_9', 'td', {}, [(d.hit > 0 ? d.dmax : '-')], {}, 'tr3'],
+        ['td3_10', 'td', {}, [(d.hit > 0 ? Math.round(d.dmg / d.hit) : '-')], {}, 'tr3'],
+        ['td3_11', 'td', { 'class': 'defHit' }, [d.dnb], {}, 'tr3'],
+        ['td3_12', 'td', { 'class': 'defHit' }, [d.desq + '/' + d.dnb], {}, 'tr3'],
+        ['td3_13', 'td', { 'class': 'defHit BWARCleft' }, [' (' + (d.dnb > 0 ? Math.round(d.desq / d.dnb * 100) : 0) + '%)'], {}, 'tr3'],
+        ['td3_14', 'td', { 'class': 'defHit' }, [d.dfail + '/'+ nb3], {}, 'tr3'],
+        ['td3_15', 'td', { 'class': 'defHit BWARCleft' }, [' (' + (nb3 > 0 ? Math.round(d.dfail / nb3 * 100) : 0) + '%)'], {}, 'tr3'],
+        ['td3_16', 'td', { 'class': 'atkHit' }, [d.pvlost], {}, 'tr3'],
+        ['td3_17', 'td', { 'class': 'heal' }, [d.pvwin], {}, 'tr3'],
+      ]);
+      var titre = i[1] + ' - ' + L.get('sRCTFight', i[0] + 1) + ' - ' + (i[2] === 0 ? L.get('sRCTtotal') : L.get('sRCround') + ' ' + i[2]); 
+      DOM.removeEvent(e.target, 'mouseover', CreateOverlib);
+      e.target.setAttribute('onmouseover', "return overlib('" + overIU['root'].innerHTML + "',CAPTION,'" +
+        titre + L.get('sOverStick') + "',CAPTIONFONTCLASS,'action-caption',WRAP);");
+      e.target.setAttribute('onclick', "return overlib('" + overIU['root'].innerHTML + "', STICKY, CAPTION,'" +
+        titre + "',CAPTIONFONTCLASS,'action-caption',WRAP);");
+      e.target.setAttribute('onmouseout', "return nd();");
+      e.target.onmouseover();
+    }
+    function clicTitle(e)
+    {
+      U.setP('show', !U.getP('show'));
+      rootIU['head_1'].className = 'BWARCspan ' + (U.getP('show') ? 'enabled' : 'disabled');
+      rootIU['main'].setAttribute('style', 'display: '+ (U.getP('show') ? 'block;' : 'none;'));
+    }
+    function clicOptions(e)
+    {
+      U.setP('shO', !U.getP('shO'));
+      rootIU['head_5'].className = 'BWARCspan ' + (U.getP('shO') ? 'enabled' : 'disabled');
+      rootIU['options'].setAttribute('style', 'display: '+ (U.getP('shO') ? 'block;' : 'none;'));
+    }
+    function clicType(e, i)
+    {
+      U.setP('mode', i);
+      upTab();
+    }
     function clicRC(e, i)
-    { // i= n°RC
-      var titre = DOM._GetFirstNode("//span[@id='BWARCspan" + i + "']"),
-        table = DOM._GetNodes("//table[@id='BWARCT" + i + "']");
-      if (titre !== null && table !== null)
+    {
+      U.setP('tab' + i, e.target.checked);
+      upTab();
+    }
+    function upTab()
+    {
+      if (U.getP('mode') === '1')
       {
-        var show = PREF._Get('RC', 'sh' + i) == 1 ? 0 : 1;
-        PREF._Set('RC', 'sh' + i, show);
-        titre.setAttribute('style', 'color:' + (show == 1 ? 'lime;' : 'red;'));
-        for (var k = 0; k < table.snapshotLength; k++)
+        for (var j = 0; j < list.length; j++)
         {
-          table.snapshotItem(k).setAttribute('style', 'display:' + (show == 1 ? 'table;' : 'none;'));
+          for (var k = 1, idx = k + '_' + j + '_'; k < 4; k++, idx = k + '_' + j + '_')
+          {
+            if (U.getP('tab' + k))
+            {
+              rootIU['tabs'].appendChild(rootIU[idx + 'table']);
+            }
+            else
+            {
+              if (!isNull(rootIU[idx + 'table'].parentNode))
+              {
+                rootIU[idx + 'table'].parentNode.removeChild(rootIU[idx + 'table']);
+              }
+            }
+          }
+        }
+      }
+      else
+      {
+        for (var j = 1; j < 4; j++)
+        {
+          for (var k = 0, idx = j + '_' + k + '_'; k < list.length; k++, idx = j + '_' + k + '_')
+          {
+            if (U.getP('tab' + j))
+            {
+              rootIU['tabs'].appendChild(rootIU[idx + 'table']);
+            }
+            else
+            {
+              if (!isNull(rootIU[idx + 'table'].parentNode))
+              {
+                rootIU[idx + 'table'].parentNode.removeChild(rootIU[idx + 'table']);
+              }
+            }
+          }
         }
       }
     }
-
     function clickCol(e, i)
     { // i[0]= n°RC, i[1]= col
-      var header = DOM._GetNodes("//tr[@id='BWARC" + i[0] + "c']"),
-        tbody = DOM._GetNodes("//tbody[@id='BWARC" + i[0] + "b']");
-      if (header !== null && tbody !== null)
+      var tri = U.getP('tr' + i[0]);
+      if (i[1] !== 0)
       {
-        var tri = PREF._Get('RC', 'tr' + i[0]);
-        tri[1] = (i[1] === tri[0] && tri[1] === 0) ? 1 : 0;
-        for (var k = 0; k < header.snapshotLength; k++)
-        {
-          var oldCol = DOM._GetFirstNode(".//th[" + tri[0] + "]/span", header.snapshotItem(k)),
-            newCol = DOM._GetFirstNode(".//th[" + i[1] + "]", header.snapshotItem(k));
-          if (oldCol !== null && newCol !== null)
-          {
-            oldCol.parentNode.removeChild(oldCol);
-            IU._CreateElement('span', { 'class': 'BWARCtri' }, [(tri[1] == 1 ? L._Get('sTriUp') : L._Get('sTriDown'))], {}, newCol);
-          }
-        }
-        for (var k = 0; k < tbody.snapshotLength; k++)
-        {
-          var list = DOM._GetNodes("./tr", tbody.snapshotItem(k));
-          if (list !== null) FctTriA(i[1], tri[1], tbody.snapshotItem(k), list);
-        }
+        tri[1] = i[1] === tri[0] && tri[1] === 1 ? 0 : 1;
         tri[0] = i[1];
-        PREF._Set('RC', 'tr' + i[0], tri);
+      }
+      if (!exist(rootIU[i[0] + '_0_th2_' + tri[0]]))
+      {
+        tri = [1, 0];
+      }
+      U.setP('tr' + i[0], tri);
+      for (var k = 0, idx = i[0] + '_' + k + '_'; rootIU[idx + 'tbody']; k++, idx = i[0] + '_' + k + '_')
+      {
+        rootIU[idx + 'tri'].textContent = (tri[1] === 1 ? L.get('sTriUp') : L.get('sTriDown'));
+        rootIU[idx + 'th2_' + tri[0]].appendChild(rootIU[idx + 'tri']);
+        var index = [];
+        for (var j = 3; rootIU[idx + 'tr' + j]; j++)
+        {
+          var v = rootIU[idx + 'td' + j + '_' + tri[0]].textContent.trim().toLowerCase();
+          var v2 = rootIU[idx + 'td' + j + '_1'].textContent.trim().toLowerCase();
+          if (tri[0] !== 1)
+          {
+            var r1 = new RegExp(L.get('sTriNb1')).exec(v);
+            var r2 = new RegExp(L.get('sTriNb2')).exec(v);
+            var r3 = new RegExp(L.get('sTriNb3')).exec(v);
+            v = r1 !== null ? parseFloat(r1[1]) : r2 !== null ? r2[2] !== 0 ? Math.round(r2[1] / r2[2] * 100): 0 : r3 !== null ? Math.round(r3[1]) : Number.POSITIVE_INFINITY;
+          }
+          index.push([v, v2, idx + 'tr' + j]);
+        }
+        // tri utilisant en 2ème critère le nom du joueur
+        index.sort(function (a, b) { return a[0] < b[0] ? -1 : a[0] === b[0] ? a[1] < b[1] ? -1 : a[1] === b[1] ? 0 : 1 : 1; });
+        if (tri[1] === 0) index.reverse();
+        for (var l = 0; l < index.length; l++)
+        {
+          if (l % 2 === 0) rootIU[index[l][2]].classList.remove('BWARCeven');
+          else rootIU[index[l][2]].classList.add('BWARCeven');
+          rootIU[idx + 'tbody'].appendChild(rootIU[index[l][2]]);
+        }
       }
     }
-
     function realName(i)
     {
-      var r = new RegExp(L._Get('sRCname')).exec(i);
-      return (r === null ? i : r[1]);
+      var r = new RegExp(L.get('sRCname')).exec(i);
+      return (isNull(r) ? i : r[1]);
     }
-    var defPlay = {
-        'count': 1,
-        'cl': null,
-        'init': [],
-        'hit': 0,
-        'cc': 0,
-        'fail': 0,
-        'esq': 0,
-        'dmin': null,
-        'rdd': [],
-        'dmax': 0,
-        'dmg': 0,
-        'dnb': 0,
-        'dfail': 0,
-        'desq': 0,
-        'pvlost': 0,
-        'pvwin': 0,
-        'dead': []
-      },
-      msgContent = DOM._GetFirstNode("//div[(@class='msg-content ' or @class='msg-content msg-quest')]"),
-      versus = DOM._GetNodes(".//table[@class='fight']/tbody/tr[@class='versus']", msgContent),
-      RCs = DOM._GetNodes(".//div[(@class='rlc fight' or @class='rlc')]", msgContent),
-      summary = DOM._GetNodes(".//div[@class='ambsummary']", msgContent);
-    // versus et RCs sont obligatoires, summary uniquement à plusieurs
-    if (versus !== null && RCs !== null && PREF._Get('RC', 'sh0') == 1)
+    function fillRd(n)
     {
-      for (var k = 0; k < versus.snapshotLength; k++)
-      { // arène 3v3 avec plusieurs combats
-        var RC = RCs.snapshotItem(k);
-        if (RC !== null)
+       return Array.apply(null, Array(n)).map(function () { return { 'nb': 1, 'hit': 0, 'cc': 0, 'fail': 0, 'esq': 0, 'dmin': Infinity, 'dmax': 0, 'dmg': 0, 'dnb': 0, 'dfail': 0, 'desq': 0, 'pvlost': 0, 'pvwin': 0, 'dead': 0 }; }); //, 'init': 0, 'dead': 0 
+    }
+    var msgContent = DOM.getFirstNode("//div[(@class='msg-content ' or @class='msg-content msg-quest')]");
+    if (!isNull(msgContent))
+    {
+      var versus = DOM.getNodes(".//table[@class='fight']/tbody/tr[@class='versus']", msgContent);
+      var RCs = DOM.getNodes(".//div[(@class='rlc fight' or @class='rlc')]", msgContent);
+      var summary = DOM.getNodes(".//div[@class='ambsummary']", msgContent);
+      // versus et RCs sont obligatoires, summary uniquement à plusieurs
+      if (versus.snapshotLength > 0 && RCs.snapshotLength > 0)
+      {
+        var rootIU = DOM.newNodes([
+          ['root', 'div', {}, [], {}, null],
+          ['hr1', 'div', { 'class': 'hr620' }, [], {}, 'root'],
+          ['head', 'div', { 'align': 'center', 'style': msgContent.getAttribute('style') }, [], {}, 'root'],
+          ['head_1', 'span', { 'class': 'BWARCspan ' + (U.getP('show') ? 'enabled' : 'disabled')}, [((typeof (GM_info) === 'object') ? GM_info.script.name : '?')], { 'click': [clicTitle] }, 'head'],
+          ['head_2', 'span', { 'class': 'BWARCspan' }, [' : '], {}, 'head'],
+          ['head_3', 'span', { 'class': 'BWARCspan' }, [], {}, 'head'],
+          ['head_3a', 'a', { 'href': 'https://github.com/Ecilam/BloodWarsAnalyseRC', 'TARGET': '_blank' }, [((typeof (GM_info) === 'object') ? GM_info.script.version : '?')], {}, 'head_3'],
+          ['head_4', 'span', { 'class': 'BWARCspan' }, [' ('], {}, 'head'],
+          ['head_5', 'span', { 'class': 'BWARCspan ' + (U.getP('shO') ? 'enabled' : 'disabled') }, [L.get('sOpt')], { 'click': [clicOptions] }, 'head'],
+          ['head_6', 'span', { 'class': 'BWARCspan' }, [')'], {}, 'head'],
+          ['main', 'div', { 'style': 'display:' + (U.getP('show') ? 'block;' : 'none;') }, [], {}, 'root'],
+          ['options', 'div', { 'align': 'center', 'style': msgContent.getAttribute('style'), 'style': 'display:' + (U.getP('shO') ? 'block;' : 'none;') }, [], {}, 'main'],
+          ['opt1', 'div', {}, [L.get('sOpt1')], {}, 'options'],
+          ['check11', 'input', { 'class': 'box', 'id': 'BWARCtypes', 'type': 'radio', 'name': 'BWARCradio', 'checked': U.getP('mode') === '1' }, [], { 'click': [clicType, '1'] }, 'opt1'],
+          ['label11', 'label', { 'for': 'BWARCtypes' }, [L.get('sYes')], {}, 'opt1'],
+          ['check12', 'input', { 'class': 'box', 'id': 'BWARCfight', 'type': 'radio', 'name': 'BWARCradio', 'checked': U.getP('mode') === '2' }, [], { 'click': [clicType, '2'] }, 'opt1'],
+          ['label12', 'label', { 'for': 'BWARCfight' }, [L.get('sNo')], {}, 'opt1'],
+          ['opt2', 'div', {}, [L.get('sOpt4')], {}, 'options'],
+          ['label21', 'label', { 'for': 'BWARCtab1' }, [L.get('sOpt5')], [], 'opt2'],
+          ['check21', 'input', { 'type': 'checkbox', 'id': 'BWARCtab1', 'checked': U.getP('tab1') }, [], { 'change': [clicRC, '1'] }, 'opt2'],
+          ['label22', 'label', { 'for': 'BWARCtab2' }, [', ' + L.get('sOpt6')], {}, 'opt2'],
+          ['check22', 'input', { 'type': 'checkbox', 'id': 'BWARCtab2', 'checked': U.getP('tab2') }, [], { 'change': [clicRC, '2'] }, 'opt2'],
+          ['label23', 'label', { 'for': 'BWARCtab3' }, [', ' + L.get('sOpt7')], {}, 'opt2'],
+          ['check23', 'input', { 'type': 'checkbox', 'id': 'BWARCtab3', 'checked': U.getP('tab3') }, [], { 'change': [clicRC, '3'] }, 'opt2'],
+          ['hr2', 'br', {}, [], {}, 'main'],
+          ['tabs', 'div', { 'align': 'center', 'style': msgContent.getAttribute('style') }, [], {}, 'main']
+          ]);
+        msgContent.parentNode.insertBefore(rootIU.root, msgContent.nextSibling);
+        // arène 3v3 avec plusieurs combats
+        var list = [];
+        for (var k = 0; k < versus.snapshotLength; k++)
         {
-          var list = {},
-            rounds = DOM._GetNodes("./ul[@class='round']", RC),
-            sum1 = DOM._GetLastNodeInnerHTML("./ul[@class='round']/li/div[@class='sum1']", null, RC),
-            sum2 = DOM._GetLastNodeInnerHTML("./ul[@class='round']/li/div[@class='sum2']", null, RC);
-          // ambu + arène solo
-          if (sum1 !== null && sum2 !== null)
+          list[k] = {};
+          var RC = RCs.snapshotItem(k);
+          if (!isNull(RC))
           {
-            var r1 = new RegExp(L._Get('sRCsum1')).exec(sum1),
-              r2 = new RegExp(L._Get('sRCsum2')).exec(sum2);
-            if (r1 !== null && r2 !== null)
+            var rounds = DOM.getNodes("./ul[@class='round']", RC);
+            if (rounds.snapshotLength > 0)
             {
-              var name1 = realName(r1[1]),
-                name2 = realName(r1[2]);
-              list[name1] = clone(defPlay);
-              list[name1].cl = 'atkHit';
-              list[name2] = clone(defPlay);
-              list[name2].cl = 'defHit';
-              if (r2[1] === 0) list[name1].dead[rounds.snapshotLength - 1] = 1;
-              if (r2[3] === 0) list[name2].dead[rounds.snapshotLength - 1] = 1;
-            }
-          }
-          // arène multi, rdc, expé
-          else if (summary !== null)
-          {
-            var prAtt = DOM._GetNodes("./table/tbody/tr/td[@class='atkHit']/b", summary.snapshotItem(k)),
-              prDef = DOM._GetNodes("./table/tbody/tr/td[@class='defHit']/b", summary.snapshotItem(k));
-            if (prAtt !== null && prDef !== null)
-            {
-              for (var i = 0; i < prAtt.snapshotLength; i++)
+              var sum1 = DOM.getLastNodeInnerHTML("./ul[@class='round']/li/div[@class='sum1']", null, RC);
+              var sum2 = DOM.getLastNodeInnerHTML("./ul[@class='round']/li/div[@class='sum2']", null, RC);
+              // ambu + arène solo
+              if (!isNull(sum1) && !isNull(sum2))
               {
-                var temp = realName(prAtt.snapshotItem(i).textContent);
-                if (_Exist(list[temp])) list[temp].count++;
-                else { list[temp] = clone(defPlay);
-                  list[temp].cl = 'atkHit'; }
-              }
-              for (var i = 0; i < prDef.snapshotLength; i++)
-              {
-                var temp = realName(prDef.snapshotItem(i).textContent);
-                if (_Exist(list[temp])) list[temp].count++;
-                else { list[temp] = clone(defPlay);
-                  list[temp].cl = 'defHit'; }
-              }
-            }
-          }
-          // Analyse le RC
-          for (var i = 0; i < rounds.snapshotLength; i++)
-          {
-            var round = rounds.snapshotItem(i),
-              lignes = DOM._GetNodes("./li", round),
-              init = 0;
-            for (var j = 0; j < lignes.snapshotLength; j++)
-            {
-              var ligne = lignes.snapshotItem(j),
-                ligCla = ligne.getAttribute('class');
-              if (ligCla == 'playerDeath')
-              {
-                var dead = new RegExp(L._Get('sRCDead')).exec(ligne.innerHTML);
-                if (dead !== null)
+                var r1 = new RegExp(L.get('sRCsum1')).exec(sum1);
+                var r2 = new RegExp(L.get('sRCsum2')).exec(sum2);
+                if (!isNull(r1) && !isNull(r2))
                 {
-                  var name = realName(dead[1]);
-                  list[name].dead[i] = _Exist(list[name].dead[i]) ? list[name].dead[i] + 1 : 1;
+                  var name1 = realName(r1[1]);
+                  var name2 = realName(r1[2]);
+                  list[k][name1] = fillRd(rounds.snapshotLength + 1);
+                  list[k][name1][0].cl = 'atkHit';
+                  list[k][name1][0].init = 0;
+                  list[k][name1][0].dead = Infinity;
+                  list[k][name2] = fillRd(rounds.snapshotLength + 1);
+                  list[k][name2][0].cl = 'defHit';
+                  list[k][name2][0].init = 0;
+                  list[k][name2][0].dead = Infinity;
                 }
               }
-              else if (ligCla == 'atkHit' || ligCla == 'defHit')
+              // arène multi, rdc, expé
+              else if (!isNull(summary.snapshotItem(k)))
               {
-                var r = new RegExp(L._Get('sRCTest')).exec(ligne.innerHTML);
-                if (r !== null)
+                var prAtt = DOM.getNodes("./table/tbody/tr/td[@class='atkHit']/b", summary.snapshotItem(k));
+                var prDef = DOM.getNodes("./table/tbody/tr/td[@class='defHit']/b", summary.snapshotItem(k));
+                for (var i = 0; i < prAtt.snapshotLength; i++)
                 {
-                  var left = new RegExp(L._Get('sRCLeft')).exec(r[1]);
-                  // cas particulier du talisman Furie bestiale - la balise b est male formatée lors de la contre attaque
-                  // correction serveur FR uniquement
-                  var left2 = new RegExp(L._Get('sRCLeft2')).exec(r[1]);
-                  left = left2 !== null ? left2 : left;
-                  if (left !== null && _Exist(list[realName(left[1])]))
+                  var temp = realName(prAtt.snapshotItem(i).textContent);
+                  if (exist(list[k][temp])) list[k][temp][0].nb++;
+                  else 
                   {
-                    var nameL = realName(left[1]);
-                    var tempAtt = list[nameL];
-                    if (!_Exist(tempAtt.init[i])) { init++;
-                      tempAtt.init[i] = init; }
-                    var right1 = new RegExp(L._Get('sRCRight1')).exec(r[2]);
-                    var right2 = new RegExp(L._Get('sRCRight2')).exec(r[2]);
-                    var right3 = new RegExp(L._Get('sRCRight3')).exec(r[2]);
-                    if (right1 !== null || right2 !== null || right3 !== null)
+                    list[k][temp] = fillRd(rounds.snapshotLength + 1);
+                    list[k][temp][0].cl = 'atkHit';
+                    list[k][temp][0].init = 0;
+                    list[k][temp][0].dead = Infinity;
+                  }
+                }
+                for (var i = 0; i < prDef.snapshotLength; i++)
+                {
+                  var temp = realName(prDef.snapshotItem(i).textContent);
+                  if (exist(list[k][temp])) list[k][temp][0].nb++;
+                  else
+                  {
+                    list[k][temp] = fillRd(rounds.snapshotLength + 1);
+                    list[k][temp][0].cl = 'defHit';
+                    list[k][temp][0].init = 0;
+                    list[k][temp][0].dead = Infinity;
+                  }
+                }
+              }
+              // Analyse le RC
+              for (var i = 0; i < rounds.snapshotLength; i++)
+              {
+                var round = rounds.snapshotItem(i);
+                var lignes = DOM.getNodes("./li", round);
+                var init = 0;
+                for (var j = 0; j < lignes.snapshotLength; j++)
+                {
+                  var ligne = lignes.snapshotItem(j);
+                  var ligCla = ligne.getAttribute('class');
+                  if (ligCla === 'playerDeath')
+                  {
+                    var dead = new RegExp(L.get('sRCDead')).exec(ligne.innerHTML);
+                    if (!isNull(dead))
                     {
-                      var right = right1 !== null ? right1 : (right2 !== null ? right2 : right3),
-                        nameR = realName(right[1]),
-                        tempDef = list[nameR];
-                      tempDef.dnb++;
-                      if (right1 !== null)
+                      var name = realName(dead[1]);
+                      list[k][name][i+1].dead = exist(list[k][name][i+1].dead) ? list[k][name][i+1].dead + 1 : 1;
+                      list[k][name][0].dead = i+1;
+                    }
+                  }
+                  else if (ligCla === 'atkHit' || ligCla === 'defHit')
+                  {
+                    var r = new RegExp(L.get('sRCTest')).exec(ligne.innerHTML);
+                    if (r !== null)
+                    {
+                      var left = new RegExp(L.get('sRCLeft')).exec(r[1]);
+                      // cas particulier du talisman Furie bestiale - la balise b est male formatée lors de la contre attaque
+                      // correction serveur FR uniquement
+                      var left2 = new RegExp(L.get('sRCLeft2')).exec(r[1]);
+                      left = left2 !== null ? left2 : left;
+                      if (left !== null && exist(list[k][realName(left[1])]))
                       {
-                        if (_Exist(tempAtt.rdd[i])) tempAtt.rdd[i] += Number(right[2]);
-                        else tempAtt.rdd[i] = Number(right[2]);
-                        tempDef.pvlost += Number(right[2]);
-                        tempAtt.hit++;
-                        tempAtt.dmg += Number(right[2]);
-                        if (new RegExp(L._Get('sRCCrit')).exec(r[1]) !== null) tempAtt.cc++;
-                        if (tempAtt.dmin === null || (tempAtt.dmin !== null && tempAtt.dmin > Number(right[2]))) tempAtt.dmin = Number(right[2]);
-                        if (tempAtt.dmax < Number(right[2])) tempAtt.dmax = Number(right[2]);
+                        var nameL = realName(left[1]);
+                        var tempAtt = list[k][nameL];
+                        if (!exist(tempAtt[i+1].init))
+                        {
+                          init++;
+                          tempAtt[i+1].init = init;
+                          tempAtt[0].init++;
+                        }
+                        var right1 = new RegExp(L.get('sRCRight1')).exec(r[2]);
+                        var right2 = new RegExp(L.get('sRCRight2')).exec(r[2]);
+                        var right3 = new RegExp(L.get('sRCRight3')).exec(r[2]);
+                        if (right1 !== null || right2 !== null || right3 !== null)
+                        {
+                          var right = right1 !== null ? right1 : (right2 !== null ? right2 : right3);
+                          var nameR = realName(right[1]);
+                          var tempDef = list[k][nameR];
+                          tempDef[i+1].dnb++;
+                          tempDef[0].dnb++;
+                          if (right1 !== null)
+                          {
+                            tempAtt[i+1].dmg += Number(right[2]);
+                            tempAtt[0].dmg += Number(right[2]);
+                            tempDef[i+1].pvlost += Number(right[2]);
+                            tempDef[0].pvlost += Number(right[2]);
+                            tempAtt[i+1].hit++;
+                            tempAtt[0].hit++;
+                            tempAtt[i+1].dmin = Math.min(tempAtt[i+1].dmin, Number(right[2]));
+                            tempAtt[0].dmin = Math.min(tempAtt[0].dmin, Number(right[2]));
+                            tempAtt[i+1].dmax = Math.max(tempAtt[i+1].dmax, Number(right[2]));
+                            tempAtt[0].dmax = Math.max(tempAtt[0].dmax, Number(right[2]));
+                            if (new RegExp(L.get('sRCCrit')).exec(r[1]) !== null)
+                            {
+                              tempAtt[i+1].cc++;
+                              tempAtt[0].cc++;
+                            }
+                          }
+                          else if (right2 !== null)
+                          {
+                            tempAtt[i+1].fail++;
+                            tempAtt[0].fail++;
+                            tempDef[i+1].dfail++;
+                            tempDef[0].dfail++;
+                          }
+                          else
+                          {
+                            tempAtt[i+1].esq++;
+                            tempAtt[0].esq++;
+                            tempDef[i+1].desq++;
+                            tempDef[0].desq++;
+                          }
+                          if (ligCla === 'atkHit')
+                          {
+                            list[k][nameL] = tempAtt;
+                            list[k][nameR] = tempDef;
+                          }
+                          else
+                          {
+                            list[k][nameR] = tempDef;
+                            list[k][nameL] = tempAtt;
+                          }
+                        }
                       }
-                      else if (right2 !== null) { tempAtt.fail++;
-                        tempDef.dfail++; }
-                      else { tempAtt.esq++;
-                        tempDef.desq++; }
-                      if (ligCla == 'atkHit') { list[nameL] = tempAtt;
-                        list[nameR] = tempDef; }
-                      else { list[nameR] = tempDef;
-                        list[nameL] = tempAtt; }
+                    }
+                  }
+                  else if (ligCla === 'heal')
+                  {
+                    var heal = new RegExp(L.get('sRCHeal')).exec(ligne.innerHTML);
+                    if (heal !== null)
+                    {
+                      list[k][realName(heal[1])][i+1].pvwin += Number(heal[2]);
+                      list[k][realName(heal[1])][0].pvwin += Number(heal[2]);
+                    }
+                    var leach = new RegExp(L.get('sRCLeach')).exec(ligne.innerHTML);
+                    if (leach !== null)
+                    {
+                      list[k][realName(leach[1])][i+1].pvlost += Number(leach[2]);
+                      list[k][realName(leach[1])][0].pvlost += Number(leach[2]);
                     }
                   }
                 }
               }
-              else if (ligCla == 'heal')
+              //"Dommages" total des deux camps (Arènes multis, expés, RDC ou sièges)
+              if (!isNull(summary.snapshotItem(k)))
               {
-                var heal = new RegExp(L._Get('sRCHeal')).exec(ligne.innerHTML);
-                if (heal !== null) list[realName(heal[1])].pvwin += Number(heal[2]);
-                var leach = new RegExp(L._Get('sRCLeach')).exec(ligne.innerHTML);
-                if (leach !== null) list[realName(leach[1])].pvlost += Number(leach[2]);
-              }
-            }
-          }
-          //"Dommages" total des deux camps (Arènes multis, expés, RDC ou sièges)
-          if (summary !== null)
-          {
-            var sum = DOM._GetFirstNode("./table[@class='fight']/tbody", summary.snapshotItem(k));
-            if (sum !== null)
-            {
-              var totalA = 0,
-                totalD = 0,
-                deadA = 0,
-                deadD = 0;
-              for (var key in list)
-              {
-                if (list.hasOwnProperty(key))
+                var sum = DOM.getFirstNode("./table[@class='fight']/tbody", summary.snapshotItem(k));
+                if (!isNull(sum))
                 {
-                  var total = 0,
-                    dead = 0;
-                  for (var j = 0; j < 10; j++)
+                  var totalA = 0;
+                  var totalD = 0;
+                  var deadA = 0;
+                  var deadD = 0;
+                  for (var key in list[k])
                   {
-                    total += _Exist(list[key].rdd[j]) ? list[key].rdd[j] : 0;
-                    dead += _Exist(list[key].dead[j]) ? list[key].dead[j] : 0;
+                    if (list[k].hasOwnProperty(key))
+                    {
+                       if (list[k][key][0].cl === 'atkHit')
+                      {
+                        totalA += list[k][key][0].dmg;
+                        deadD += list[k][key].reduce((a, b, c) => c > 0 ? a + b.dead : 0, 0);
+                      }
+                      else
+                      {
+                        totalD += list[k][key][0].dmg;
+                        deadA += list[k][key].reduce((a, b, c) => c > 0 ? a + b.dead : 0, 0);
+                      }
+                    }
                   }
-                  if (list[key].cl == 'atkHit')
-                  {
-                    totalA += total;
-                    deadD += dead;
-                  }
-                  else
-                  {
-                    totalD += total;
-                    deadA += dead;
-                  }
+                  DOM.newNodes([
+                    [k + '_totaltr', 'tr', {}, [], {}, sum],
+                    [k + '_totaltd1', 'td', { 'class': 'BWARCbold' }, [L.get('sRCTtotal')], {}, k + '_totaltr'],
+                    [k + '_totaltd2', 'td', { 'class': 'BWARCbold' }, [totalA + ' / ' + deadA], {}, k + '_totaltr'],
+                    [k + '_totaltd3', 'td', { 'colspan': '2' }, [], {}, k + '_totaltr'],
+                    [k + '_totaltd4', 'td', { 'class': 'BWARCbold' }, [L.get('sRCTtotal')], {}, k + '_totaltr'],
+                    [k + '_totaltd5', 'td', { 'class': 'BWARCbold' }, [totalD + ' / ' + deadD], {}, k + '_totaltr'],
+                    [k + '_totaltd6', 'td', { 'colspan': '2' }, [], {}, k + '_totaltr']
+                  ], rootIU);
                 }
               }
-              var ligneIU = {
-                'tr': ['tr', {}, [], {}, sum],
-                'td01': ['td', { 'class': 'BWARCbold' }, [L._Get('sRCTtotal')], {}, 'tr'],
-                'td02': ['td', { 'class': 'BWARCbold' }, [totalA + ' / ' + deadA], {}, 'tr'],
-                'td03': ['td', { 'colspan': '2' }, [], {}, 'tr'],
-                'td04': ['td', { 'class': 'BWARCbold' }, [L._Get('sRCTtotal')], {}, 'tr'],
-                'td05': ['td', { 'class': 'BWARCbold' }, [totalD + ' / ' + deadD], {}, 'tr'],
-                'td06': ['td', { 'colspan': '2' }, [], {}, 'tr']
-              };
-              IU._CreateElements(ligneIU);
-            }
-          }
-          // tableau 3
-          var div = DOM._GetFirstNode("//div[@id='BWARCD3']");
-          if (k === 0)
-          {
-            var divIU = {
-              'div': ['div', { 'id': 'BWARCD3', 'style': msgContent.getAttribute('style') }],
-              'span': ['span', { 'class': 'BWARCspan', 'id': 'BWARCspan3', 'style': 'color:' + (PREF._Get('RC', 'sh3') == 1 ? 'lime;' : 'red;') }, [L._Get('sRCTitle3')], { 'click': [clicRC, '3'] }, 'div']
-            };
-            div = msgContent.parentNode.insertBefore(IU._CreateElements(divIU).div, msgContent.nextSibling);
-          }
-          if (div !== null)
-          {
-            var table3IU = {
-                'table': ['table', { 'class': 'BWARCT', 'id': 'BWARCT3', 'style': 'display:' + (PREF._Get('RC', 'sh3') == 1 ? 'table;' : 'none;') }, [], {}, div],
-                'thead': ['thead', {}, [], {}, 'table'],
-                'tr01': ['tr', { 'class': 'tblheader' }, [], {}, 'thead'],
-                'th011': ['th', { 'class': 'BWARCLeft', 'style': 'width:20%' }, [L._Get('sRCTFight') + ' n°' + (k + 1)], {}, 'tr01'],
-                'th012': ['th', { 'colspan': '10' }, [L._Get('sRCTRd')], {}, 'tr01'],
-                'th013': ['th', {}, [], {}, 'tr01'],
-                'tr02': ['tr', { 'id': 'BWARC3c', 'class': 'tblheader' }, [], {}, 'thead'],
-                'th021': ['th', { 'class': 'BWARCLeft' }, [L._Get('sRCTName')], { 'click': [clickCol, [3, 1]] }, 'tr02'],
-                'tbody': ['tbody', { 'id': 'BWARC3b' }, [], {}, 'table']
-              },
-              table3 = IU._CreateElements(table3IU);
-            for (var i = 1; i <= 10; i++) IU._CreateElement('th', {}, [i], { 'click': [clickCol, [3, i + 1]] }, table3.tr02);
-            IU._CreateElement('th', {}, [L._Get('sRCTMoy')], { 'click': [clickCol, [3, 12]] }, table3.tr02);
-            for (var key in list)
-            {
-              if (list.hasOwnProperty(key))
+              // tableau n°1 Analyse du combat
+              var idx = '1_' + k + '_';
+              DOM.newNodes([
+                [idx + 'table', 'table', { 'class': 'BWARCT' }, [], {}, null],
+                [idx + 'thead', 'thead', {}, [], {}, idx + 'table'],
+                [idx + 'tr1', 'tr', { 'class': 'tblheader' }, [], {}, idx + 'thead'],
+                [idx + 'th1_1', 'th', { 'class': 'BWARCleft'}, [L.get('sOpt5') + ' - ' + L.get('sRCTFight', k+1)], {}, idx + 'tr1'],
+                [idx + 'th1_2', 'th', { 'class': 'BWARCmid', 'colspan': '7' }, [L.get('sRCTAtt')], {}, idx + 'tr1'],
+                [idx + 'th1_3', 'th', { 'class': 'BWARCmid', 'colspan': '5' }, [L.get('sRCTDef')], {}, idx + 'tr1'],
+                [idx + 'th1_4', 'th', { 'class': 'BWARCmid', 'colspan': '2' }, [L.get('sRCTPV')], {}, idx + 'tr1'],
+                [idx + 'th1_5', 'th', { 'colspan': '1' }, [L.get('sRCTDead')], {}, idx + 'tr1'],
+                [idx + 'tr2', 'tr', { 'class': 'tblheader BWARCtitle' }, [], {}, idx + 'thead'],
+                [idx + 'th2_1', 'th', { 'style': 'width:15%', 'class': 'BWARCleft'}, [L.get('sRCTName')], { 'click': [clickCol, [1, 1]] }, idx + 'tr2'],
+                [idx + 'th2_2', 'th', { 'style': 'width:5%' }, [L.get('sRCTNb')], { 'click': [clickCol, [1, 2]] }, idx + 'tr2'],
+                [idx + 'th2_3', 'th', { 'style': 'width:5%' }, [L.get('sRCTEsq')], { 'click': [clickCol, [1, 3]] }, idx + 'tr2'],
+                [idx + 'th2_4', 'th', { 'style': 'width:5%', 'class': 'BWARCleft' }, [L.get('sRCperc')], { 'click': [clickCol, [1, 4]] }, idx + 'tr2'],
+                [idx + 'th2_5', 'th', { 'style': 'width:5%' }, [L.get('sRCTHit')], { 'click': [clickCol, [1, 5]] }, idx + 'tr2'],
+                [idx + 'th2_6', 'th', { 'style': 'width:5%', 'class': 'BWARCleft' }, [L.get('sRCperc')], { 'click': [clickCol, [1, 6]] }, idx + 'tr2'],
+                [idx + 'th2_7', 'th', { 'style': 'width:5%' }, [L.get('sRCTCC')], { 'click': [clickCol, [1, 7]] }, idx + 'tr2'],
+                [idx + 'th2_8', 'th', { 'style': 'width:5%', 'class': 'BWARCleft' }, [L.get('sRCperc')], { 'click': [clickCol, [1, 8]] }, idx + 'tr2'],
+                [idx + 'th2_9', 'th', { 'style': 'width:5%' }, [L.get('sRCTNb')], { 'click': [clickCol, [1, 9]] }, idx + 'tr2'],
+                [idx + 'th2_10', 'th', { 'style': 'width:5%' }, [L.get('sRCTEsq')], { 'click': [clickCol, [1, 10]] }, idx + 'tr2'],
+                [idx + 'th2_11', 'th', { 'style': 'width:5%', 'class': 'BWARCleft' }, [L.get('sRCperc')], { 'click': [clickCol, [1, 11]] }, idx + 'tr2'],
+                [idx + 'th2_12', 'th', { 'style': 'width:5%' }, [L.get('sRCTFail')], { 'click': [clickCol, [1, 12]] }, idx + 'tr2'],
+                [idx + 'th2_13', 'th', { 'style': 'width:5%', 'class': 'BWARCleft' }, [L.get('sRCperc')], { 'click': [clickCol, [1, 13]] }, idx + 'tr2'],
+                [idx + 'th2_14', 'th', { 'style': 'width:5%' }, [L.get('sRCTLose')], { 'click': [clickCol, [1, 14]] }, idx + 'tr2'],
+                [idx + 'th2_15', 'th', { 'style': 'width:5%' }, [L.get('sRCTWin')], { 'click': [clickCol, [1, 15]] }, idx + 'tr2'],
+                [idx + 'th2_16', 'th', { 'style': 'width:5%' }, [L.get('sRCTRd')], { 'click': [clickCol, [1, 16]] }, idx + 'tr2'],
+                [idx + 'tbody', 'tbody', {}, [], {}, idx + 'table'],
+                [idx + 'br', 'br', {}, [], {}, idx + 'table'],
+                [idx + 'tri', 'span', { 'class': 'BWARCtri' }, [], {}, null]
+              ], rootIU);
+              var i = 3;
+              for (var key in list[k])
               {
-                var ligneIU = {
-                    'tr': ['tr', {}, [], {}, table3.tbody],
-                    'td01': ['td', { 'class': (list[key].cl == 'atkHit' ? 'atkHit' : 'defHit') + ' BWARCLeft BWARCbold' }, [key + (list[key].count > 1 ? ' x' + list[key].count : '')], {}, 'tr']
-                  },
-                  ligne = IU._CreateElements(ligneIU),
-                  init = 0,
-                  count = 0;
-                for (var j = 0; j < 10; j++)
+                if (list[k].hasOwnProperty(key))
                 {
-                  IU._CreateElement('td', {}, [_Exist(list[key].init[j]) ? list[key].init[j] : '∞'], {}, ligne.tr);
-                  if (_Exist(list[key].init[j]))
+                  var nb = list[k][key][0].hit + list[k][key][0].fail + list[k][key][0].esq;
+                  var nb2 = (list[k][key][0].hit + list[k][key][0].fail);
+                  var nb3 = list[k][key][0].dnb - list[k][key][0].desq;
+                  DOM.newNodes([
+                    [idx + 'tr' + i, 'tr', { 'class': 'BWARCtr' }, [], {}, rootIU[idx + 'tbody']],
+                    [idx + 'td' + i + '_1', 'td', { 'class': (list[k][key][0].cl === 'atkHit' ? 'atkHit' : 'defHit') + ' BWARCleft BWARCbold' }, [key + (list[k][key][0].nb > 1 ? ' x' + list[k][key][0].nb : '')], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_2', 'td', { 'class': 'atkHit' }, [nb], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_3', 'td', { 'class': 'atkHit' }, [list[k][key][0].esq], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_4', 'td', { 'class': 'atkHit BWARCleft' }, ['(' + (nb > 0 ? Math.round(list[k][key][0].esq / nb * 100) : 0) + '%)'], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_5', 'td', { 'class': 'atkHit' }, [list[k][key][0].hit + '/' + nb2], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_6', 'td', { 'class': 'atkHit BWARCleft' }, [' (' + (nb2 > 0 ? Math.round(list[k][key][0].hit / nb2 * 100) : 0) + '%)'], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_7', 'td', { 'class': 'atkHit' }, [list[k][key][0].cc + '/' + list[k][key][0].hit], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_8', 'td', { 'class': 'atkHit BWARCleft' }, [' (' + (list[k][key][0].hit > 0 ? Math.round(list[k][key][0].cc / list[k][key][0].hit * 100) : 0) + '%)'], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_9', 'td', { 'class': 'defHit' }, [list[k][key][0].dnb], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_10', 'td', { 'class': 'defHit' }, [list[k][key][0].desq + '/' + list[k][key][0].dnb], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_11', 'td', { 'class': 'defHit BWARCleft' }, [' (' + (list[k][key][0].dnb > 0 ? Math.round(list[k][key][0].desq / list[k][key][0].dnb * 100) : 0) + '%)'], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_12', 'td', { 'class': 'defHit' }, [list[k][key][0].dfail + '/'+ nb3], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_13', 'td', { 'class': 'defHit BWARCleft' }, [' (' + (nb3 > 0 ? Math.round(list[k][key][0].dfail / nb3 * 100) : 0) + '%)'], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_14', 'td', { 'class': 'atkHit' }, [list[k][key][0].pvlost], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_15', 'td', { 'class': 'heal' }, [list[k][key][0].pvwin], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_16', 'td', { 'class': 'playerDeath' }, [list[k][key].map((a, b) => b > 0 && a.dead > 0 ? b + (a.dead > 1 ? 'x' + a.dead : '') : '').reduce((a, b) => a + (a !== '' ? b !== '' ? ',' : '' : '') + b, '')], {}, idx + 'tr' + i]
+                  ], rootIU);
+                  i++;
+                }
+              }
+              // tableau n°2 Dommages / manche
+              idx = '2_' + k + '_';
+              DOM.newNodes([
+                [idx + 'table', 'table', { 'class': 'BWARCT' }, [], {}, null],
+                [idx + 'thead', 'thead', {}, [], {}, idx + 'table'],
+                [idx + 'tr1', 'tr', { 'class': 'tblheader' }, [], {}, idx + 'thead'],
+                [idx + 'th1_1', 'th', { 'class': 'BWARCleft'}, [L.get('sOpt6') + ' - ' + L.get('sRCTFight', k+1)], {}, idx + 'tr1'],
+                [idx + 'th1_2', 'th', { 'class': 'BWARCmid', 'colspan': '10' }, [L.get('sRCround')], {}, idx + 'tr1'],
+                [idx + 'th1_3', 'th', { 'class': 'BWARCmid'}, [], {}, idx + 'tr1'],
+                [idx + 'tr2', 'tr', { 'class': 'tblheader BWARCtitle' }, [], {}, idx + 'thead'],
+                [idx + 'th2_1', 'th', { 'style': 'width:20%', 'class': 'BWARCleft'}, [L.get('sRCTName')], { 'click': [clickCol, [2, 1]] }, idx + 'tr2'],
+                [idx + 'tbody', 'tbody', {}, [], {}, idx + 'table'],
+                [idx + 'br', 'br', {}, [], {}, idx + 'table'],
+                [idx + 'tri', 'span', { 'class': 'BWARCtri' }, [], {}, null]
+              ], rootIU);
+              for (var i = 2; i < 12; i++)
+              {
+                DOM.newNodes([[idx + 'th2_' + i, 'th', { 'style': 'width:7%' }, [i-1], { 'click': [clickCol, [2, i]] }, idx + 'tr2']], rootIU);
+              }
+              DOM.newNodes([[idx + 'th2_12', 'th', { 'style': 'width:10%' }, [L.get('sRCTtotal')], { 'click': [clickCol, [2, 12]] }, idx + 'tr2']], rootIU);
+              var i = 3;
+              for (var key in list[k])
+              {
+                if (list[k].hasOwnProperty(key))
+                {
+                  DOM.newNodes([
+                    [idx + 'tr' + i, 'tr', { 'class': 'BWARCtr' }, [], {}, rootIU[idx + 'tbody']],
+                    [idx + 'td' + i + '_1', 'td', { 'class': (list[k][key][0].cl === 'atkHit' ? 'atkHit' : 'defHit') + ' BWARCleft BWARCbold' }, [key + (list[k][key][0].nb > 1 ? ' x' + list[k][key][0].nb : '')], {}, idx + 'tr' + i]
+                  ], rootIU);
+                  var total = 0;
+                  for (var j = 2; j < 12; j++)
                   {
-                    init += list[key].init[j];
-                    count++;
+                    if (exist(list[k][key][j-1]) && j-2 < list[k][key][0].dead)
+                    {
+                      total += list[k][key][j-1].dmg;
+                      DOM.newNodes([[idx + 'td' + i + '_' + j, 'th', {}, [list[k][key][j-1].dmg], { 'mouseover': [CreateOverlib, [k, key, j-1]] }, idx + 'tr' + i]], rootIU);
+                    }
+                    else
+                    {
+                      DOM.newNodes([[idx + 'td' + i + '_' + j, 'th', {}, [], {}, idx + 'tr' + i]], rootIU);
+                    }
                   }
+                  DOM.newNodes([[idx + 'td' + i + '_12', 'th', {}, [total], { 'mouseover': [CreateOverlib, [k, key, 0]] }, idx + 'tr' + i]], rootIU);
+                  i++;
                 }
-                IU._CreateElement('td', {}, [count > 0 ? (init / count).toFixed(1) : ''], {}, ligne.tr);
               }
-            }
-            var tri = PREF._Get('RC', 'tr3');
-            var newCol = DOM._GetFirstNode("./th[" + tri[0] + "]", table3.tr02);
-            if (newCol !== null)
-            {
-              IU._CreateElement('span', { 'class': 'BWARCtri' }, [(tri[1] == 1 ? L._Get('sTriUp') : L._Get('sTriDown'))], {}, newCol);
-              FctTriA(tri[0], tri[1], table3.tbody, DOM._GetNodes("./tr", table3.tbody));
-            }
-          }
-          // tableau 2
-          var div = DOM._GetFirstNode("//div[@id='BWARCD2']");
-          if (k === 0)
-          {
-            var divIU = {
-              'div': ['div', { 'id': 'BWARCD2', 'style': msgContent.getAttribute('style') }, [], {}, msgContent.parentNode],
-              'span': ['span', { 'class': 'BWARCspan', 'id': 'BWARCspan2', 'style': 'color:' + (PREF._Get('RC', 'sh2') == 1 ? 'lime;' : 'red;') }, [L._Get('sRCTitle2')], { 'click': [clicRC, '2'] }, 'div']
-            };
-            div = msgContent.parentNode.insertBefore(IU._CreateElements(divIU).div, msgContent.nextSibling);
-          }
-          if (div !== null)
-          {
-            var table2IU = {
-                'table': ['table', { 'class': 'BWARCT', 'id': 'BWARCT2', 'style': 'display:' + (PREF._Get('RC', 'sh2') == 1 ? 'table;' : 'none;') }, [], {}, div],
-                'thead': ['thead', {}, [], {}, 'table'],
-                'tr01': ['tr', { 'class': 'tblheader' }, [], {}, 'thead'],
-                'th011': ['th', { 'class': 'BWARCLeft', 'style': 'width:20%' }, [L._Get('sRCTFight') + ' n°' + (k + 1)], {}, 'tr01'],
-                'th012': ['th', { 'colspan': '10' }, [L._Get('sRCTRd')], {}, 'tr01'],
-                'th013': ['th', {}, [], {}, 'tr01'],
-                'tr02': ['tr', { 'id': 'BWARC2c', 'class': 'tblheader' }, [], {}, 'thead'],
-                'th021': ['th', { 'class': 'BWARCLeft' }, [L._Get('sRCTName')], { 'click': [clickCol, [2, 1]] }, 'tr02'],
-                'tbody': ['tbody', { 'id': 'BWARC2b' }, [], {}, 'table']
-              },
-              table2 = IU._CreateElements(table2IU);
-            for (var i = 1; i <= 10; i++) IU._CreateElement('th', {}, [i], { 'click': [clickCol, [2, i + 1]] }, table2.tr02);
-            IU._CreateElement('th', {}, [L._Get('sRCTtotal')], { 'click': [clickCol, [2, 12]] }, table2.tr02);
-            for (var key in list)
-            {
-              if (list.hasOwnProperty(key))
+              // tableau Initiative / manche
+              idx = '3_' + k + '_';
+              DOM.newNodes([
+                [idx + 'table', 'table', { 'class': 'BWARCT' }, [], {}, null],
+                [idx + 'thead', 'thead', {}, [], {}, idx + 'table'],
+                [idx + 'tr1', 'tr', { 'class': 'tblheader' }, [], {}, idx + 'thead'],
+                [idx + 'th1_1', 'th', { 'class': 'BWARCleft'}, [L.get('sOpt7') + ' - ' + L.get('sRCTFight', k+1)], {}, idx + 'tr1'],
+                [idx + 'th1_2', 'th', { 'class': 'BWARCmid', 'colspan': '10' }, [L.get('sRCround')], {}, idx + 'tr1'],
+                [idx + 'th1_3', 'th', { 'class': 'BWARCmid'}, [], {}, idx + 'tr1'],
+                [idx + 'tr2', 'tr', { 'class': 'tblheader BWARCtitle' }, [], {}, idx + 'thead'],
+                [idx + 'th2_1', 'th', { 'style': 'width:20%', 'class': 'BWARCleft'}, [L.get('sRCTName')], { 'click': [clickCol, [3, 1]] }, idx + 'tr2'],
+                [idx + 'tbody', 'tbody', {}, [], {}, idx + 'table'],
+                [idx + 'br', 'br', {}, [], {}, idx + 'table'],
+                [idx + 'tri', 'span', { 'class': 'BWARCtri' }, [], {}, null]
+              ], rootIU);
+              for (var i = 2; i < 12; i++)
               {
-                var ligneIU = {
-                    'tr': ['tr', {}, [], {}, table2.tbody],
-                    'td01': ['td', { 'class': (list[key].cl == 'atkHit' ? 'atkHit' : 'defHit') + ' BWARCLeft BWARCbold' }, [key + (list[key].count > 1 ? ' x' + list[key].count : '')], {}, 'tr']
-                  },
-                  ligne = IU._CreateElements(ligneIU),
-                  total = 0;
-                for (var j = 0; j < 10; j++)
+                DOM.newNodes([[idx + 'th2_' + i, 'th', { 'style': 'width:7%' }, [i-1], { 'click': [clickCol, [3, i]] }, idx + 'tr2']], rootIU);
+              }
+              DOM.newNodes([[idx + 'th2_12', 'th', { 'style': 'width:10%' }, [L.get('sRCTMoy')], { 'click': [clickCol, [3, 12]] }, idx + 'tr2']], rootIU);
+              var i = 3;
+              for (var key in list[k])
+              {
+                if (list[k].hasOwnProperty(key))
                 {
-                  var dmg = _Exist(list[key].rdd[j]) ? list[key].rdd[j] : 0;
-                  total += dmg;
-                  IU._CreateElement('td', {}, [dmg], {}, ligne.tr);
+                  DOM.newNodes([
+                    [idx + 'tr' + i, 'tr', { 'class': 'BWARCtr' }, [], {}, rootIU[idx + 'tbody']],
+                    [idx + 'td' + i + '_1', 'td', { 'class': (list[k][key][0].cl === 'atkHit' ? 'atkHit' : 'defHit') + ' BWARCleft BWARCbold' }, [key + (list[k][key][0].nb > 1 ? ' x' + list[k][key][0].nb : '')], {}, idx + 'tr' + i]
+                  ], rootIU);
+                  var init = 0;
+                  for (var j = 2; j < 12; j++)
+                  {
+                    if (exist(list[k][key][j-1]) && exist(list[k][key][j-1].init))
+                    {
+                      init += list[k][key][j-1].init;
+                    }
+                    DOM.newNodes([[idx + 'td' + i + '_' + j, 'th', {}, [j-2 < list[k][key][0].dead && exist(list[k][key][j-1]) ? exist(list[k][key][j-1].init) ? list[k][key][j-1].init : '∞' : ''], {}, idx + 'tr' + i]], rootIU);
+                  }
+                  DOM.newNodes([[idx + 'td' + i + '_12', 'th', {}, [list[k][key][0].init > 0 ? (init / list[k][key][0].init).toFixed(1) : '∞'], {}, idx + 'tr' + i]], rootIU);
+                  i++;
                 }
-                IU._CreateElement('td', {}, [total], {}, ligne.tr);
               }
             }
-            var tri = PREF._Get('RC', 'tr2');
-            var newCol = DOM._GetFirstNode("./th[" + tri[0] + "]", table2.tr02);
-            if (newCol !== null)
-            {
-              IU._CreateElement('span', { 'class': 'BWARCtri' }, [(tri[1] == 1 ? L._Get('sTriUp') : L._Get('sTriDown'))], {}, newCol);
-              FctTriA(tri[0], tri[1], table2.tbody, DOM._GetNodes("./tr", table2.tbody));
-            }
-            if (k == versus.snapshotLength - 1) div.parentNode.insertBefore(IU._CreateElement('br', { 'id': 'BWERCBR' }, [], {}), div.nextSibling);
-          }
-          // tableau 1
-          var div = DOM._GetFirstNode("//div[@id='BWARCD1']");
-          if (k === 0)
-          {
-            var divIU = {
-              'div': ['div', { 'id': 'BWARCD1', 'style': msgContent.getAttribute('style') }],
-              'span': ['span', { 'class': 'BWARCspan', 'id': 'BWARCspan1', 'style': 'color:' + (PREF._Get('RC', 'sh1') == 1 ? 'lime;' : 'red;') }, [L._Get('sRCTitle1')], { 'click': [clicRC, '1'] }, 'div']
-            };
-            div = msgContent.parentNode.insertBefore(IU._CreateElements(divIU).div, msgContent.nextSibling);
-          }
-          if (div !== null)
-          {
-            var table1IU = {
-                'table': ['table', { 'class': 'BWARCT', 'id': 'BWARCT1', 'style': 'display:' + (PREF._Get('RC', 'sh1') == 1 ? 'table;' : 'none;') }, [], {}, div],
-                'thead': ['thead', {}, [], {}, 'table'],
-                'tr01': ['tr', { 'class': 'tblheader' }, [], {}, 'thead'],
-                'th011': ['th', { 'class': 'BWARCLeft', 'style': 'width:20%' }, [L._Get('sRCTFight') + ' n°' + (k + 1)], {}, 'tr01'],
-                'th012': ['th', {'colspan': '4' }, [L._Get('sRCTAtt')], {}, 'tr01'],
-//                'th013': ['th', { 'style': 'width:15%', 'colspan': '3' }, [L._Get('sRCTDmg')], {}, 'tr01'],
-                'th014': ['th', {'colspan': '3' }, [L._Get('sRCTDef')], {}, 'tr01'],
-                'th015': ['th', {'colspan': '2' }, [L._Get('sRCTPV')], {}, 'tr01'],
-                'th016': ['th', {'colspan': '1' }, [L._Get('sRCTDead')], {}, 'tr01'],
-                'tr02': ['tr', { 'id': 'BWARC1c', 'class': 'tblheader' }, [], {}, 'thead'],
-                'th021': ['th', { 'class': 'BWARCLeft' }, [L._Get('sRCTName')], { 'click': [clickCol, [1, 1]] }, 'tr02'],
-/*                'th022': ['th', {}, [L._Get('sRCTNb')], { 'click': [clickCol, [1, 2]] }, 'tr02'],
-                'th023': ['th', {}, [L._Get('sRCTEsq')], { 'click': [clickCol, [1, 3]] }, 'tr02'],
-                'th024': ['th', {}, [L._Get('sRCTHit')], { 'click': [clickCol, [1, 4]] }, 'tr02'],
-                'th025': ['th', {}, [L._Get('sRCTCC')], { 'click': [clickCol, [1, 5]] }, 'tr02'],
-                'th026': ['th', {}, [L._Get('sRCTNb')], { 'click': [clickCol, [1, 6]] }, 'tr02'],
-                'th027': ['th', {}, [L._Get('sRCTEsq')], { 'click': [clickCol, [1, 7]] }, 'tr02'],
-                'th028': ['th', {}, [L._Get('sRCTFail')], { 'click': [clickCol, [1, 8]] }, 'tr02'],
-                'th029': ['th', {}, [L._Get('sRCTLose')], { 'click': [clickCol, [1, 9]] }, 'tr02'],
-                'th0210': ['th', {}, [L._Get('sRCTWin')], { 'click': [clickCol, [1, 10]] }, 'tr02'],
-                'th0211': ['th', {}, [L._Get('sRCTRd')], { 'click': [clickCol, [1, 11]] }, 'tr02'],*/
-                'tbody': ['tbody', { 'id': 'BWARC1b' }, [], {}, 'table'],
-              };
-            var table1 = IU._CreateElements(table1IU);
-            var thList = ['sRCTNb', 'sRCTEsq', 'sRCTHit', 'sRCTCC', 'sRCTNb', 'sRCTEsq', 'sRCTFail', 'sRCTLose', 'sRCTWin', 'sRCTRd'];
-              //  'sRCTFail', 'sRCTMin', 'sRCTMax', 'sRCTMoy',
-            for (var i = 0; i < thList.length; i++) IU._CreateElement('th', {}, [L._Get(thList[i])], { 'click': [clickCol, [1, i + 2]] }, table1.tr02);
-            for (var key in list)
-            {
-              if (list.hasOwnProperty(key))
-              {
-                var nb = list[key].hit + list[key].fail + list[key].esq;
-                var nb2 = (list[key].hit + list[key].fail);
-                var nb3 = list[key].dnb - list[key].desq;
-                var ligneIU = {
-                    'tr': ['tr', {}, [], {}, table1.tbody],
-                    'td01': ['td', { 'class': (list[key].cl == 'atkHit' ? 'atkHit' : 'defHit') + ' BWARCLeft BWARCbold' }, [key + (list[key].count > 1 ? ' x' + list[key].count : '')], {}, 'tr'],
-                    'td02': ['td', { 'class': 'atkHit' }, [nb], {}, 'tr'],
-                    'td03': ['td', { 'class': 'atkHit' }, [list[key].esq + ' (' + (nb > 0 ? Math.round(list[key].esq / nb * 100) : 0) + '%)'], {}, 'tr'],
-//                    'td04': ['td', { 'class': 'atkHit' }, [list[key].fail + ' (' + (nb2 > 0 ? Math.round(list[key].fail / nb2 * 100) : 0) + '%)'], {}, 'tr'],
-                    'td05': ['td', { 'class': 'atkHit' }, [list[key].hit + '/' + nb2 + ' (' + (nb2 > 0 ? Math.round(list[key].hit / nb2 * 100) : 0) + '%)'], {}, 'tr'],
-                    'td06': ['td', { 'class': 'atkHit' }, [list[key].cc + '/' + list[key].hit + ' (' + (list[key].hit > 0 ? Math.round(list[key].cc / list[key].hit * 100) : 0) + '%)'], {}, 'tr'],
-//                    'td07': ['td', {}, [(list[key].dmin !== null ? list[key].dmin : 0)], {}, 'tr'],
-//                    'td08': ['td', {}, [list[key].dmax], {}, 'tr'],
-//                    'td09': ['td', {}, [(list[key].hit > 0 ? Math.round(list[key].dmg / list[key].hit) : 0)], {}, 'tr'],
-                    'td10': ['td', { 'class': 'defHit' }, [list[key].dnb], {}, 'tr'],
-                    'td11': ['td', { 'class': 'defHit' }, [list[key].desq + '/' + list[key].dnb + ' (' + (list[key].dnb > 0 ? Math.round(list[key].desq / list[key].dnb * 100) : 0) + '%)'], {}, 'tr'],
-                    'td12': ['td', { 'class': 'defHit' }, [list[key].dfail + '/'+ nb3 + ' (' + (nb3 > 0 ? Math.round(list[key].dfail / nb3 * 100) : 0) + '%)'], {}, 'tr'],
-                    'td13': ['td', { 'class': 'atkHit' }, [list[key].pvlost], {}, 'tr'],
-                    'td14': ['td', { 'class': 'heal' }, [list[key].pvwin], {}, 'tr'],
-                    'td15': ['td', { 'class': 'playerDeath' }, [], {}, 'tr']
-                  },
-                  ligne = IU._CreateElements(ligneIU);
-                for (var j = 0; j < list[key].dead.length; j++) ligne.td15.textContent += (_Exist(list[key].dead[j]) ? (ligne.td15.textContent.length > 0 ? ',' : '') + (j + 1) + (list[key].dead[j] > 1 ? 'x' + list[key].dead[j] : '') : '');
-              }
-            }
-            var tri = PREF._Get('RC', 'tr1');
-            if (tri[0] > 11)
-            {
-              tri = [1, 1];
-              PREF._Set('RC', 'tr1', tri);
-            }
-            var newCol = DOM._GetFirstNode("./th[" + tri[0] + "]", table1.tr02);
-            if (newCol !== null)
-            {
-              IU._CreateElement('span', { 'class': 'BWARCtri' }, [(tri[1] == 1 ? L._Get('sTriUp') : L._Get('sTriDown'))], {}, newCol);
-              FctTriA(tri[0], tri[1], table1.tbody, DOM._GetNodes("./tr", table1.tbody));
-            }
-            if (k == versus.snapshotLength - 1) div.parentNode.insertBefore(IU._CreateElement('br', { 'id': 'BWERCBR' }, [], {}), div.nextSibling);
           }
         }
+        clickCol(null, [1, 0]);
+        clickCol(null, [2, 0]);
+        clickCol(null, [3, 0]);
+        upTab();
       }
     }
   }
   /******************************************************
    * START
    ******************************************************/
-  // vérification des services
-  if (!JSON) throw new Error("Erreur : le service JSON n\'est pas disponible.");
-  else
+  var page = G.page();
+if (debug) console.debug('BWARCstart :', page, U.user);
+  // Pages gérées par le script
+  if (page === 'pShowMsg' || page === 'pMsg' || page === 'pMsgSave')
   {
-    var p = DATAS._GetPage();
-if (debug) console.debug('BWARCpage :', p);
-    // Pages gérées par le script
-    if (['null', 'pServerDeco', 'pServerUpdate', 'pServerOther'].indexOf(p) == -1)
+    if (U.user)
     {
-      // identification du joueur
-      var player = DATAS._PlayerName(),
-        realm = DATAS._Royaume(),
-        IDs = GM._GetVar('BWARC:IDS', {}),
-        lastID = GM._GetVar('BWARC:LASTID', null);
-if (debug) console.debug('BWARCstart: %o %o %o %o', player, realm, IDs, lastID);
-      if (player !== null && realm !== null && p == 'pMain')
-      {
-        var r = DOM._GetFirstNodeTextContent("//div[@id='content-mid']/div[@id='reflink']/span[@class='reflink']", null);
-        if (r !== null)
-        {
-          var r2 = /r\.php\?r=([0-9]+)/.exec(r),
-            ID = _Exist(r2[1]) ? r2[1] : null;
-          if (ID !== null)
-          {
-            for (var i in IDs)
-              if (IDs[i] == ID) delete IDs[i]; // en cas de changement de nom
-            IDs[realm + ':' + player] = ID;
-            GM._SetVar('BWARC:IDS', IDs);
-            GM._SetVar('BWARC:LASTID', realm + ':' + ID);
-          }
-        }
-      }
-      else if (p == 'pShowMsg' || p == 'pMsg' || p == 'pMsgSave')
-      {
-        if (lastID !== null && p == 'pShowMsg')
-        {
-          SetCSS();
-          PREF._Init(lastID);
-          AnalyseRC();
-        }
-        else if (player !== null && realm !== null && _Exist(IDs[realm + ':' + player]) && p != 'pShowMsg')
-        {
-          SetCSS();
-          PREF._Init(realm + ':' + IDs[realm + ':' + player]);
-          AnalyseRC();
-        }
-        else alert(L._Get("sUnknowID"));
-      }
+      AnalyseRC();
+    }
+    else
+    {
+      alert(L.get("sUnknowID"));
     }
   }
-  if (debug) console.debug('BWARCEnd - time %oms', Date.now() - debugTime);
+if (debug) console.debug('BWARCEnd - time %oms', Date.now() - debugTime);
 })();
