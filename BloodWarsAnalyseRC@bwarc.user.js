@@ -2,7 +2,7 @@
 // ==UserScript==
 // @author      Ecilam
 // @name        Blood Wars Analyse RC
-// @version     2017.06.19
+// @version     2017.06.20
 // @namespace   BWARC
 // @description Ce script analyse les combats sur Blood Wars.
 // @copyright   2012-2017, Ecilam
@@ -395,14 +395,13 @@
       "sOpt1": ["Grouper les tableaux par combats : ", "Grouping Fighting Tables : ", "Grupowanie obrazy walk : "],
       "sYes": ["Oui", "Yes", "tak"],
       "sNo": ["Non", "No", "Nie"],
-      "sOpt4": ["Tableaux : ", "Tables : ", "tabele : "],
-      "sOpt5": ["Analyse", "Analysis", "Analiza"],
-      "sOpt6": ["Dommages", "Damage", "Szkód"],
-      "sOpt7": ["Initiative", "Initiative", "Inicjatywa"],
+      "sOpt2": ["Tableaux : ", "Tables : ", "tabele : "],
+      "sRCAna": ["Analyse", "Analysis", "Analiza"],
+      "sRCInit": ["Initiative", "Initiative", "Inicjatywa"],
       "sRCTFight": ["Combat $1", "Fight $1", "Walka $1"],
       "sRCround": ["Manche", "Round", "Runda"],
       "sRCTAtt": ["Attaque", "Attack", "Atak"],
-      "sRCTDmg": ["Dommages", "Damage", "Szkód"],
+      "sRCTDmg": ["Dégâts", "Damage", "Szkód"],
       "sRCTDef": ["Défense", "Defence", "Obrona"],
       "sRCTPV": ["PV", "HP", "PŻ"],
       "sRCTDead": ["Mort", "Dead", "Martwy"],
@@ -811,6 +810,38 @@
       e.target.setAttribute('onmouseout', "return nd();");
       e.target.onmouseover();
     }
+    function CreateOverlib2(e, i)
+    { // i[combat, key]
+      var d = list[i[0]][i[1]][0];
+      var nb = d.hit + d.fail + d.esq;
+      var nb2 = d.hit + d.fail;
+      var nb3 = d.dnb - d.desq;
+      var overIU = DOM.newNodes([
+        ['root', 'div', { 'align': 'center', 'style': msgContent.getAttribute('style') }, [], {}, null],
+        ['table', 'table', { 'class': 'BWARCT' }, [], {}, 'root'],
+        ['thead', 'thead', {}, [], {}, 'table'],
+ /*       ['tr1', 'tr', { 'class': 'tblheader' }, [], {}, 'thead'],
+        ['th1_1', 'th', { 'class': 'BWARCmid', 'colspan': '3' }, [L.get('sRCTDmg')], {}, 'tr1'],*/
+        ['tr2', 'tr', { 'class': 'tblheader' }, [], {}, 'thead'],
+        ['th2_1', 'th', { 'class': 'BWARCmid' }, [L.get('sRCTMin')], {}, 'tr2'],
+        ['th2_2', 'th', { 'class': 'BWARCmid' }, [L.get('sRCTMax')], {}, 'tr2'],
+        ['th2_3', 'th', { 'class': 'BWARCmid' }, [L.get('sRCTMoy')], {}, 'tr2'],
+        ['tbody', 'tbody', {}, [], {}, 'table'],
+        ['tr3', 'tr', { 'class': 'tblheader' }, [], {}, 'tbody'],
+        ['td3_1', 'td', { 'class': 'BWARCmid' }, [(d.hit > 0 ? d.dmin : '-')], {}, 'tr3'],
+        ['td3_2', 'td', { 'class': 'BWARCmid' }, [(d.hit > 0 ? d.dmax : '-')], {}, 'tr3'],
+        ['td3_3', 'td', { 'class': 'BWARCmid' }, [(d.hit > 0 ? Math.round(d.dmg / d.hit) : '-')], {}, 'tr3'],
+
+      ]);
+      var titre = i[1]; 
+      DOM.removeEvent(e.target, 'mouseover', CreateOverlib);
+      e.target.setAttribute('onmouseover', "return overlib('" + overIU['root'].innerHTML + "',CAPTION,'" +
+        titre + L.get('sOverStick') + "',CAPTIONFONTCLASS,'action-caption',WRAP);");
+      e.target.setAttribute('onclick', "return overlib('" + overIU['root'].innerHTML + "', STICKY, CAPTION,'" +
+        titre + "',CAPTIONFONTCLASS,'action-caption',WRAP);");
+      e.target.setAttribute('onmouseout', "return nd();");
+      e.target.onmouseover();
+    }
     function clicTitle(e)
     {
       U.setP('show', !U.getP('show'));
@@ -954,12 +985,12 @@
           ['label11', 'label', { 'for': 'BWARCtypes' }, [L.get('sYes')], {}, 'opt1'],
           ['check12', 'input', { 'class': 'box', 'id': 'BWARCfight', 'type': 'radio', 'name': 'BWARCradio', 'checked': U.getP('mode') === '2' }, [], { 'click': [clicType, '2'] }, 'opt1'],
           ['label12', 'label', { 'for': 'BWARCfight' }, [L.get('sNo')], {}, 'opt1'],
-          ['opt2', 'div', {}, [L.get('sOpt4')], {}, 'options'],
-          ['label21', 'label', { 'for': 'BWARCtab1' }, [L.get('sOpt5')], [], 'opt2'],
+          ['opt2', 'div', {}, [L.get('sOpt2')], {}, 'options'],
+          ['label21', 'label', { 'for': 'BWARCtab1' }, [L.get('sRCAna')], [], 'opt2'],
           ['check21', 'input', { 'type': 'checkbox', 'id': 'BWARCtab1', 'checked': U.getP('tab1') }, [], { 'change': [clicRC, '1'] }, 'opt2'],
-          ['label22', 'label', { 'for': 'BWARCtab2' }, [', ' + L.get('sOpt6')], {}, 'opt2'],
+          ['label22', 'label', { 'for': 'BWARCtab2' }, [', ' + L.get('sRCTDmg')], {}, 'opt2'],
           ['check22', 'input', { 'type': 'checkbox', 'id': 'BWARCtab2', 'checked': U.getP('tab2') }, [], { 'change': [clicRC, '2'] }, 'opt2'],
-          ['label23', 'label', { 'for': 'BWARCtab3' }, [', ' + L.get('sOpt7')], {}, 'opt2'],
+          ['label23', 'label', { 'for': 'BWARCtab3' }, [', ' + L.get('sRCInit')], {}, 'opt2'],
           ['check23', 'input', { 'type': 'checkbox', 'id': 'BWARCtab3', 'checked': U.getP('tab3') }, [], { 'change': [clicRC, '3'] }, 'opt2'],
           ['hr2', 'br', {}, [], {}, 'main'],
           ['tabs', 'div', { 'align': 'center', 'style': msgContent.getAttribute('style') }, [], {}, 'main']
@@ -1183,28 +1214,30 @@
                 [idx + 'table', 'table', { 'class': 'BWARCT' }, [], {}, null],
                 [idx + 'thead', 'thead', {}, [], {}, idx + 'table'],
                 [idx + 'tr1', 'tr', { 'class': 'tblheader' }, [], {}, idx + 'thead'],
-                [idx + 'th1_1', 'th', { 'class': 'BWARCleft'}, [L.get('sOpt5') + ' - ' + L.get('sRCTFight', k+1)], {}, idx + 'tr1'],
+                [idx + 'th1_1', 'th', { 'class': 'BWARCleft'}, [L.get('sRCAna') + ' - ' + L.get('sRCTFight', k+1)], {}, idx + 'tr1'],
                 [idx + 'th1_2', 'th', { 'class': 'BWARCmid', 'colspan': '7' }, [L.get('sRCTAtt')], {}, idx + 'tr1'],
+                [idx + 'th1_2', 'th', { 'class': 'BWARCmid' }, [L.get('sRCTDmg')], {}, idx + 'tr1'],
                 [idx + 'th1_3', 'th', { 'class': 'BWARCmid', 'colspan': '5' }, [L.get('sRCTDef')], {}, idx + 'tr1'],
                 [idx + 'th1_4', 'th', { 'class': 'BWARCmid', 'colspan': '2' }, [L.get('sRCTPV')], {}, idx + 'tr1'],
                 [idx + 'th1_5', 'th', { 'colspan': '1' }, [L.get('sRCTDead')], {}, idx + 'tr1'],
                 [idx + 'tr2', 'tr', { 'class': 'tblheader BWARCtitle' }, [], {}, idx + 'thead'],
-                [idx + 'th2_1', 'th', { 'style': 'width:15%', 'class': 'BWARCleft'}, [L.get('sRCTName')], { 'click': [clickCol, [1, 1]] }, idx + 'tr2'],
-                [idx + 'th2_2', 'th', { 'style': 'width:5%' }, [L.get('sRCTNb')], { 'click': [clickCol, [1, 2]] }, idx + 'tr2'],
+                [idx + 'th2_1', 'th', { 'style': 'width:16%', 'class': 'BWARCleft'}, [L.get('sRCTName')], { 'click': [clickCol, [1, 1]] }, idx + 'tr2'],
+                [idx + 'th2_2', 'th', { 'style': 'width:2%' }, [L.get('sRCTNb')], { 'click': [clickCol, [1, 2]] }, idx + 'tr2'],
                 [idx + 'th2_3', 'th', { 'style': 'width:5%' }, [L.get('sRCTEsq')], { 'click': [clickCol, [1, 3]] }, idx + 'tr2'],
                 [idx + 'th2_4', 'th', { 'style': 'width:5%', 'class': 'BWARCleft' }, [L.get('sRCperc')], { 'click': [clickCol, [1, 4]] }, idx + 'tr2'],
                 [idx + 'th2_5', 'th', { 'style': 'width:5%' }, [L.get('sRCTHit')], { 'click': [clickCol, [1, 5]] }, idx + 'tr2'],
                 [idx + 'th2_6', 'th', { 'style': 'width:5%', 'class': 'BWARCleft' }, [L.get('sRCperc')], { 'click': [clickCol, [1, 6]] }, idx + 'tr2'],
                 [idx + 'th2_7', 'th', { 'style': 'width:5%' }, [L.get('sRCTCC')], { 'click': [clickCol, [1, 7]] }, idx + 'tr2'],
                 [idx + 'th2_8', 'th', { 'style': 'width:5%', 'class': 'BWARCleft' }, [L.get('sRCperc')], { 'click': [clickCol, [1, 8]] }, idx + 'tr2'],
-                [idx + 'th2_9', 'th', { 'style': 'width:5%' }, [L.get('sRCTNb')], { 'click': [clickCol, [1, 9]] }, idx + 'tr2'],
-                [idx + 'th2_10', 'th', { 'style': 'width:5%' }, [L.get('sRCTEsq')], { 'click': [clickCol, [1, 10]] }, idx + 'tr2'],
-                [idx + 'th2_11', 'th', { 'style': 'width:5%', 'class': 'BWARCleft' }, [L.get('sRCperc')], { 'click': [clickCol, [1, 11]] }, idx + 'tr2'],
-                [idx + 'th2_12', 'th', { 'style': 'width:5%' }, [L.get('sRCTFail')], { 'click': [clickCol, [1, 12]] }, idx + 'tr2'],
-                [idx + 'th2_13', 'th', { 'style': 'width:5%', 'class': 'BWARCleft' }, [L.get('sRCperc')], { 'click': [clickCol, [1, 13]] }, idx + 'tr2'],
-                [idx + 'th2_14', 'th', { 'style': 'width:5%' }, [L.get('sRCTLose')], { 'click': [clickCol, [1, 14]] }, idx + 'tr2'],
-                [idx + 'th2_15', 'th', { 'style': 'width:5%' }, [L.get('sRCTWin')], { 'click': [clickCol, [1, 15]] }, idx + 'tr2'],
-                [idx + 'th2_16', 'th', { 'style': 'width:5%' }, [L.get('sRCTRd')], { 'click': [clickCol, [1, 16]] }, idx + 'tr2'],
+                [idx + 'th2_9', 'th', { 'style': 'width:5%' }, [L.get('sRCTtotal')], { 'click': [clickCol, [1, 9]] }, idx + 'tr2'],
+                [idx + 'th2_10', 'th', { 'style': 'width:2%' }, [L.get('sRCTNb')], { 'click': [clickCol, [1, 10]] }, idx + 'tr2'],
+                [idx + 'th2_11', 'th', { 'style': 'width:5%' }, [L.get('sRCTEsq')], { 'click': [clickCol, [1, 11]] }, idx + 'tr2'],
+                [idx + 'th2_12', 'th', { 'style': 'width:5%', 'class': 'BWARCleft' }, [L.get('sRCperc')], { 'click': [clickCol, [1, 12]] }, idx + 'tr2'],
+                [idx + 'th2_13', 'th', { 'style': 'width:5%' }, [L.get('sRCTFail')], { 'click': [clickCol, [1, 13]] }, idx + 'tr2'],
+                [idx + 'th2_14', 'th', { 'style': 'width:5%', 'class': 'BWARCleft' }, [L.get('sRCperc')], { 'click': [clickCol, [1, 14]] }, idx + 'tr2'],
+                [idx + 'th2_15', 'th', { 'style': 'width:5%' }, [L.get('sRCTLose')], { 'click': [clickCol, [1, 15]] }, idx + 'tr2'],
+                [idx + 'th2_16', 'th', { 'style': 'width:5%' }, [L.get('sRCTWin')], { 'click': [clickCol, [1, 16]] }, idx + 'tr2'],
+                [idx + 'th2_17', 'th', { 'style': 'width:5%' }, [L.get('sRCTRd')], { 'click': [clickCol, [1, 17]] }, idx + 'tr2'],
                 [idx + 'tbody', 'tbody', {}, [], {}, idx + 'table'],
                 [idx + 'br', 'br', {}, [], {}, idx + 'table'],
                 [idx + 'tri', 'span', { 'class': 'BWARCtri' }, [], {}, null]
@@ -1227,14 +1260,15 @@
                     [idx + 'td' + i + '_6', 'td', { 'class': 'atkHit BWARCleft' }, [' (' + (nb2 > 0 ? Math.round(list[k][key][0].hit / nb2 * 100) : 0) + '%)'], {}, idx + 'tr' + i],
                     [idx + 'td' + i + '_7', 'td', { 'class': 'atkHit' }, [list[k][key][0].cc + '/' + list[k][key][0].hit], {}, idx + 'tr' + i],
                     [idx + 'td' + i + '_8', 'td', { 'class': 'atkHit BWARCleft' }, [' (' + (list[k][key][0].hit > 0 ? Math.round(list[k][key][0].cc / list[k][key][0].hit * 100) : 0) + '%)'], {}, idx + 'tr' + i],
-                    [idx + 'td' + i + '_9', 'td', { 'class': 'defHit' }, [list[k][key][0].dnb], {}, idx + 'tr' + i],
-                    [idx + 'td' + i + '_10', 'td', { 'class': 'defHit' }, [list[k][key][0].desq + '/' + list[k][key][0].dnb], {}, idx + 'tr' + i],
-                    [idx + 'td' + i + '_11', 'td', { 'class': 'defHit BWARCleft' }, [' (' + (list[k][key][0].dnb > 0 ? Math.round(list[k][key][0].desq / list[k][key][0].dnb * 100) : 0) + '%)'], {}, idx + 'tr' + i],
-                    [idx + 'td' + i + '_12', 'td', { 'class': 'defHit' }, [list[k][key][0].dfail + '/'+ nb3], {}, idx + 'tr' + i],
-                    [idx + 'td' + i + '_13', 'td', { 'class': 'defHit BWARCleft' }, [' (' + (nb3 > 0 ? Math.round(list[k][key][0].dfail / nb3 * 100) : 0) + '%)'], {}, idx + 'tr' + i],
-                    [idx + 'td' + i + '_14', 'td', { 'class': 'atkHit' }, [list[k][key][0].pvlost], {}, idx + 'tr' + i],
-                    [idx + 'td' + i + '_15', 'td', { 'class': 'heal' }, [list[k][key][0].pvwin], {}, idx + 'tr' + i],
-                    [idx + 'td' + i + '_16', 'td', { 'class': 'playerDeath' }, [list[k][key].map((a, b) => b > 0 && a.dead > 0 ? b + (a.dead > 1 ? 'x' + a.dead : '') : '').reduce((a, b) => a + (a !== '' ? b !== '' ? ',' : '' : '') + b, '')], {}, idx + 'tr' + i]
+                    [idx + 'td' + i + '_9', 'td', {}, [list[k][key][0].dmg], { 'mouseover': [CreateOverlib2, [k, key]] }, idx + 'tr' + i],
+                    [idx + 'td' + i + '_10', 'td', { 'class': 'defHit' }, [list[k][key][0].dnb], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_11', 'td', { 'class': 'defHit' }, [list[k][key][0].desq + '/' + list[k][key][0].dnb], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_12', 'td', { 'class': 'defHit BWARCleft' }, [' (' + (list[k][key][0].dnb > 0 ? Math.round(list[k][key][0].desq / list[k][key][0].dnb * 100) : 0) + '%)'], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_13', 'td', { 'class': 'defHit' }, [list[k][key][0].dfail + '/'+ nb3], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_14', 'td', { 'class': 'defHit BWARCleft' }, [' (' + (nb3 > 0 ? Math.round(list[k][key][0].dfail / nb3 * 100) : 0) + '%)'], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_15', 'td', { 'class': 'atkHit' }, [list[k][key][0].pvlost], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_16', 'td', { 'class': 'heal' }, [list[k][key][0].pvwin], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_17', 'td', { 'class': 'playerDeath' }, [list[k][key].map((a, b) => b > 0 && a.dead > 0 ? b + (a.dead > 1 ? 'x' + a.dead : '') : '').reduce((a, b) => a + (a !== '' ? b !== '' ? ',' : '' : '') + b, '')], {}, idx + 'tr' + i]
                   ], rootIU);
                   i++;
                 }
@@ -1245,7 +1279,7 @@
                 [idx + 'table', 'table', { 'class': 'BWARCT' }, [], {}, null],
                 [idx + 'thead', 'thead', {}, [], {}, idx + 'table'],
                 [idx + 'tr1', 'tr', { 'class': 'tblheader' }, [], {}, idx + 'thead'],
-                [idx + 'th1_1', 'th', { 'class': 'BWARCleft'}, [L.get('sOpt6') + ' - ' + L.get('sRCTFight', k+1)], {}, idx + 'tr1'],
+                [idx + 'th1_1', 'th', { 'class': 'BWARCleft'}, [L.get('sRCTDmg') + ' - ' + L.get('sRCTFight', k+1)], {}, idx + 'tr1'],
                 [idx + 'th1_2', 'th', { 'class': 'BWARCmid', 'colspan': '10' }, [L.get('sRCround')], {}, idx + 'tr1'],
                 [idx + 'th1_3', 'th', { 'class': 'BWARCmid'}, [], {}, idx + 'tr1'],
                 [idx + 'tr2', 'tr', { 'class': 'tblheader BWARCtitle' }, [], {}, idx + 'thead'],
@@ -1268,12 +1302,10 @@
                     [idx + 'tr' + i, 'tr', { 'class': 'BWARCtr' }, [], {}, rootIU[idx + 'tbody']],
                     [idx + 'td' + i + '_1', 'td', { 'class': (list[k][key][0].cl === 'atkHit' ? 'atkHit' : 'defHit') + ' BWARCleft BWARCbold' }, [key + (list[k][key][0].nb > 1 ? ' x' + list[k][key][0].nb : '')], {}, idx + 'tr' + i]
                   ], rootIU);
-                  var total = 0;
                   for (var j = 2; j < 12; j++)
                   {
                     if (exist(list[k][key][j-1]) && j-2 < list[k][key][0].dead)
                     {
-                      total += list[k][key][j-1].dmg;
                       DOM.newNodes([[idx + 'td' + i + '_' + j, 'th', {}, [list[k][key][j-1].dmg], { 'mouseover': [CreateOverlib, [k, key, j-1]] }, idx + 'tr' + i]], rootIU);
                     }
                     else
@@ -1281,7 +1313,7 @@
                       DOM.newNodes([[idx + 'td' + i + '_' + j, 'th', {}, [], {}, idx + 'tr' + i]], rootIU);
                     }
                   }
-                  DOM.newNodes([[idx + 'td' + i + '_12', 'th', {}, [total], { 'mouseover': [CreateOverlib, [k, key, 0]] }, idx + 'tr' + i]], rootIU);
+                  DOM.newNodes([[idx + 'td' + i + '_12', 'th', {}, [list[k][key][0].dmg], { 'mouseover': [CreateOverlib, [k, key, 0]] }, idx + 'tr' + i]], rootIU);
                   i++;
                 }
               }
@@ -1291,7 +1323,7 @@
                 [idx + 'table', 'table', { 'class': 'BWARCT' }, [], {}, null],
                 [idx + 'thead', 'thead', {}, [], {}, idx + 'table'],
                 [idx + 'tr1', 'tr', { 'class': 'tblheader' }, [], {}, idx + 'thead'],
-                [idx + 'th1_1', 'th', { 'class': 'BWARCleft'}, [L.get('sOpt7') + ' - ' + L.get('sRCTFight', k+1)], {}, idx + 'tr1'],
+                [idx + 'th1_1', 'th', { 'class': 'BWARCleft'}, [L.get('sRCInit') + ' - ' + L.get('sRCTFight', k+1)], {}, idx + 'tr1'],
                 [idx + 'th1_2', 'th', { 'class': 'BWARCmid', 'colspan': '10' }, [L.get('sRCround')], {}, idx + 'tr1'],
                 [idx + 'th1_3', 'th', { 'class': 'BWARCmid'}, [], {}, idx + 'tr1'],
                 [idx + 'tr2', 'tr', { 'class': 'tblheader BWARCtitle' }, [], {}, idx + 'thead'],
