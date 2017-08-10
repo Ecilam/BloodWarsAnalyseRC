@@ -2,17 +2,17 @@
 // ==UserScript==
 // @author      Ecilam
 // @name        Blood Wars Analyse RC
-// @version     2017.06.20
+// @version     2017.08.10
 // @namespace   BWARC
 // @description Ce script analyse les combats sur Blood Wars.
 // @copyright   2012-2017, Ecilam
 // @license     GPL version 3 ou suivantes; http://www.gnu.org/copyleft/gpl.html
 // @homepageURL https://github.com/Ecilam/BloodWarsAnalyseRC
 // @supportURL  https://github.com/Ecilam/BloodWarsAnalyseRC/issues
-// @include     /^http:\/\/r[0-9]*\.fr\.bloodwars\.net\/.*$/
-// @include     /^http:\/\/r[0-9]*\.bloodwars\.net\/.*$/
-// @include     /^http:\/\/r[0-9]*\.bloodwars\.interia\.pl\/.*$/
-// @include     /^http:\/\/beta[0-9]*\.bloodwars\.net\/.*$/
+// @include     /^https:\/\/r[0-9]*\.fr\.bloodwars\.net\/.*$/
+// @include     /^https:\/\/r[0-9]*\.bloodwars\.net\/.*$/
+// @include     /^https:\/\/r[0-9]*\.bloodwars\.interia\.pl\/.*$/
+// @include     /^https:\/\/beta[0-9]*\.bloodwars\.net\/.*$/
 // @grant       GM_getValue
 // @grant       GM_setValue
 // ==/UserScript==
@@ -155,7 +155,7 @@
    * OBJET DOM - Fonctions DOM & QueryString
    * - fonctions d'accès aux noeuds basées sur Xpath
    * - fonctions de création de noeuds et event
-   * - gueryString : accès aux arguments de l'URL
+   * - queryString : accès aux arguments de l'URL
    ******************************************************/
   var DOM = (function ()
   {
@@ -170,7 +170,6 @@
        */
       getNodes: function (path, root)
       {
-//if (debug) console.debug('BWARc : ', path, exist(root) ? root:null);
         return document.evaluate(path, (exist(root) ? root : document), null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
       },
       /**
@@ -527,10 +526,9 @@
     var lastID = GM.get('BWARC:LASTID', null);
     var id = null;
     return {
-      user: false,
       /**
        * @method init
-       * Fonction d'initialisation de l'objet User.
+       * Fonction d'initialisation de l'objet U.
        * Identifie l'utilisateur et ses paramètres (name, id, pref).
        * @return {Objet}
        */
@@ -568,7 +566,6 @@
         }
         if (!isNull(id))
         {
-          this.user = true;
           var prefTmp = GM.get('BWARC:O:' + id, {});
           for (var i in defPref)
           {
@@ -576,6 +573,15 @@
           }
         }
         return this;
+      },
+      /**
+       * @method id
+       * Retourne l'id de l'utilisateur.
+       * @return {integer|null} 
+       */
+      id: function ()
+      {
+        return id;
       },
       /**
        * @method getP
@@ -1373,11 +1379,11 @@
    * START
    ******************************************************/
   var page = G.page();
-if (debug) console.debug('BWARCstart :', page, U.user);
+if (debug) console.debug('BWARCstart :', page, U.id());
   // Pages gérées par le script
   if (page === 'pShowMsg' || page === 'pMsg' || page === 'pMsgSave')
   {
-    if (U.user)
+    if (!isNull(U.id()))
     {
       AnalyseRC();
     }
