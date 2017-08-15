@@ -20,7 +20,7 @@
 {
   "use strict";
   var debugTime = Date.now(); // @type {Date} permet de mesurer le temps d'execution du script.
-  var debug = false; // @type {Boolean} Active l'affichage des messages sur la console de débogages.
+  var debug = true; // @type {Boolean} Active l'affichage des messages sur la console de débogages.
   /**
    * @method exist
    * Test l'existence d'une valeur
