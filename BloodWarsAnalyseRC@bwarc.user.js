@@ -2,7 +2,7 @@
 // ==UserScript==
 // @author      Ecilam
 // @name        Blood Wars Analyse RC
-// @version     2017.08.10a
+// @version     2018.04.04
 // @namespace   BWARC
 // @description Ce script analyse les combats sur Blood Wars.
 // @copyright   2012-2017, Ecilam
@@ -146,6 +146,7 @@
        */
       set: function (key, val)
       {
+if (debug) console.debug('BWARCset :', key, val);
         GM_setValue(key, Jsons.encode(val));
         return val;
       }
@@ -367,21 +368,24 @@
       "sRCname": ["^([^\\(]+)(?: \\(\\*\\))?(?: \\(@\\))?$"],
       "sRCsum1": ["(.+)<br>(.+)"],
       "sRCsum2": ["([0-9]+) \\/ ([0-9]+)<br>([0-9]+) \\/ ([0-9]+)"],
-      "sRCTest": ["^([^,]+), ([^,]+)\\.$"],
+      "sRCTest": ["^([^,]+), ([^,]+)$"],
       "sRCLeft": ["^<b[^<>]*>([^<>]+)<\\/b>.+$"],
       "sRCLeft2": ["^<b[^<>]*>([^<>]+) contre attaque et effectue <\\/b>.+$"],
       "sRCDead": ["^<b[^<>]*>([^<>]+)<\\/b> (?:finit|fini) sa (?:non-|)vie sur le champ de bataille\\.$",
 				"^<b[^<>]*>([^<>]+)<\\/b> is slain on the battlefield\\.$",
 				"^<b[^<>]*>([^<>]+)<\\/b> kończy swoje nie-życie na polu walki\\.$"],
-      "sRCRight1": ["^<b[^<>]*>([^<>]+)<\\/b> obtient des dommages de <b[^<>]*>(\\d+)<\\/b> PTS DE VIE$",
-					"^<b[^<>]*>([^<>]+)<\\/b> takes <b[^<>]*>(\\d+)<\\/b> damage$",
-					"^<b[^<>]*>([^<>]+)<\\/b> zostaje (?:zraniony|zraniona) za <b[^<>]*>(\\d+)<\\/b> PKT ŻYCIA$"],
-      "sRCRight2": ["^<b[^<>]*>([^<>]+)<\\/b> (?:évite le coup|n`a pas été touché(?:e|))$",
-					"^<b[^<>]*>([^<>]+)<\\/b> (?:dodges the strike|is not hit)$",
-					"^<b[^<>]*>([^<>]+)<\\/b> (?:unika ciosu|nie zostaje trafion(?:y|a))$"],
-      "sRCRight3": ["^<b[^<>]*>([^<>]+)<\\/b> effectue une série d`esquives et évite la frappe$",
-					"^<b[^<>]*>([^<>]+)<\\/b> performs a series of feints and dodges the strike$",
-					"^<b[^<>]*>([^<>]+)<\\/b> wykonuje serię zwodów i unika trafienia$"],
+      "sRCRight1": ["^<b[^<>]*>([^<>]+)<\\/b> obtient des dommages de <b[^<>]*>(\\d+)<\\/b> PTS DE VIE\\.$",
+					"^<b[^<>]*>([^<>]+)<\\/b> takes <b[^<>]*>(\\d+)<\\/b> damage\\.$",
+					"^<b[^<>]*>([^<>]+)<\\/b> zostaje (?:zraniony|zraniona) za <b[^<>]*>(\\d+)<\\/b> PKT ŻYCIA\\.$"],
+      "sRCRight2": ["^<b[^<>]*>([^<>]+)<\\/b> (?:évite le coup|n`a pas été touché(?:e|))\\.$",
+					"^<b[^<>]*>([^<>]+)<\\/b> (?:dodges the strike|is not hit)\\.$",
+					"^<b[^<>]*>([^<>]+)<\\/b> (?:unika ciosu|nie zostaje trafion(?:y|a))\\.$"],
+      "sRCRight3": ["^<b[^<>]*>([^<>]+)<\\/b> (?:effectue une série d`esquives et évite la frappe|prend <b>la Forme Astrale<\\/b> et évite les dégâts)\\.$", // Zulchequon prend la Forme Astrale et évite les dégâts.
+					"^<b[^<>]*>([^<>]+)<\\/b> performs a series of feints and dodges the strike\\.$",
+					"^<b[^<>]*>([^<>]+)<\\/b> wykonuje serię zwodów i unika trafienia\\.$"],
+      "sRCRight4": ["^attaque touche l`(Illusion d`Hallucinateur)$",
+					"^attaque touche l`(Illusion d`Hallucinateur)$", // à traduire
+					"^attaque touche l`(Illusion d`Hallucinateur)$"],
       "sRCCrit": ["un coup critique", "strikes critically", "cios krytyczny"],
       "sRCHeal": ["^(?:Une force miraculeuse fait que |)<b[^<>]*>([^<>]+)<\\/b> regagne <b[^<>]*>(\\d+)<\\/b> PTS DE VIE\\.$",
 					"^(?:A miraculous power makes |)<b[^<>]*>([^<>]+)<\\/b> regenerate[s]? <b[^<>]*>(\\d+)<\\/b> HP\\.$",
@@ -920,12 +924,13 @@
       {
         tri[1] = i[1] === tri[0] && tri[1] === 1 ? 0 : 1;
         tri[0] = i[1];
+        U.setP('tr' + i[0], tri);
       }
       if (!exist(rootIU[i[0] + '_0_th2_' + tri[0]]))
       {
         tri = [1, 0];
+        U.setP('tr' + i[0], tri);
       }
-      U.setP('tr' + i[0], tri);
       for (var k = 0, idx = i[0] + '_' + k + '_'; rootIU[idx + 'tbody']; k++, idx = i[0] + '_' + k + '_')
       {
         rootIU[idx + 'tri'].textContent = (tri[1] === 1 ? L.get('sTriUp') : L.get('sTriDown'));
@@ -1107,9 +1112,17 @@
                         var right1 = new RegExp(L.get('sRCRight1')).exec(r[2]);
                         var right2 = new RegExp(L.get('sRCRight2')).exec(r[2]);
                         var right3 = new RegExp(L.get('sRCRight3')).exec(r[2]);
-                        if (right1 !== null || right2 !== null || right3 !== null)
+                        var right4 = new RegExp(L.get('sRCRight4')).exec(r[2]); // Illusion d`Hallucinateur
+                        if (right1 !== null || right2 !== null || right3 !== null || right4 !== null)
                         {
-                          var right = right1 !== null ? right1 : (right2 !== null ? right2 : right3);
+                          if (right4 !== null && !exist(list[k][right4[1]]))
+                          {
+                            list[k][right4[1]] = fillRd(rounds.snapshotLength + 1);
+                            list[k][right4[1]][0].cl = 'defHit';
+                            list[k][right4[1]][0].init = 0;
+                            list[k][right4[1]][0].dead = Infinity;
+                          }
+                          var right = right1 !== null ? right1 : (right2 !== null ? right2 : (right3 !== null ? right3 : right4));
                           var nameR = realName(right[1]);
                           var tempDef = list[k][nameR];
                           tempDef[i+1].dnb++;
@@ -1139,12 +1152,17 @@
                             tempDef[i+1].dfail++;
                             tempDef[0].dfail++;
                           }
-                          else
+                          else if (right3 !== null)
                           {
                             tempAtt[i+1].esq++;
                             tempAtt[0].esq++;
                             tempDef[i+1].desq++;
                             tempDef[0].desq++;
+                          }
+                          else // right4
+                          {
+                            tempAtt[i+1].hit++;
+                            tempAtt[0].hit++;
                           }
                           if (ligCla === 'atkHit')
                           {
