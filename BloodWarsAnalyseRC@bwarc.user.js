@@ -2,7 +2,7 @@
 // ==UserScript==
 // @author      Ecilam
 // @name        Blood Wars Analyse RC
-// @version     2018.04.04
+// @version     2018.10.18
 // @namespace   BWARC
 // @description Ce script analyse les combats sur Blood Wars.
 // @copyright   2012-2017, Ecilam
@@ -756,6 +756,14 @@ if (debug) console.debug('BWARCset :', key, val);
   /******************************************************
    * FUNCTIONS
    ******************************************************/
+  function formatToUnits(num, precision) {
+    const abbrev = ['', 'k', 'm', 'b', 't'];
+    const unrangifiedOrder = Math.floor(Math.log10(Math.abs(num)) / 3)
+    const order = Math.max(0, Math.min(unrangifiedOrder, abbrev.length -1 ))
+    const suffix = abbrev[order];
+
+    return (num / Math.pow(10, order * 3)).toFixed(precision) + suffix;
+  }
   function AnalyseRC()
   {
     function CreateOverlib(e, i)
@@ -969,7 +977,7 @@ if (debug) console.debug('BWARCset :', key, val);
     {
        return Array.apply(null, Array(n)).map(function () { return { 'nb': 1, 'hit': 0, 'cc': 0, 'fail': 0, 'esq': 0, 'dmin': Infinity, 'dmax': 0, 'dmg': 0, 'dnb': 0, 'dfail': 0, 'desq': 0, 'pvlost': 0, 'pvwin': 0, 'dead': 0 }; }); //, 'init': 0, 'dead': 0 
     }
-    var msgContent = DOM.getFirstNode("//div[(@class='msg-content ' or @class='msg-content msg-quest')]");
+    var msgContent = DOM.getFirstNode("//div[(@class='msg-content' or @class='msg-content msg-quest')]");
     if (!isNull(msgContent))
     {
       var versus = DOM.getNodes(".//table[@class='fight']/tbody/tr[@class='versus']", msgContent);
@@ -980,7 +988,8 @@ if (debug) console.debug('BWARCset :', key, val);
       {
         var rootIU = DOM.newNodes([
           ['root', 'div', {}, [], {}, null],
-          ['hr1', 'div', { 'class': 'hr620' }, [], {}, 'root'],
+     //     ['hr1', 'div', { 'class': 'hr620' }, [], {}, 'root'],
+          ['hr1', 'br', {}, [], {}, 'root'],
           ['head', 'div', { 'align': 'center', 'style': msgContent.getAttribute('style') }, [], {}, 'root'],
           ['head_1', 'span', { 'class': 'BWARCspan ' + (U.getP('show') ? 'enabled' : 'disabled')}, [((typeof (GM_info) === 'object') ? GM_info.script.name : '?')], { 'click': [clicTitle] }, 'head'],
           ['head_2', 'span', { 'class': 'BWARCspan' }, [' : '], {}, 'head'],
