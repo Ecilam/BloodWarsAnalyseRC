@@ -2,10 +2,10 @@
 // ==UserScript==
 // @author      Ecilam
 // @name        Blood Wars Analyse RC
-// @version     2018.10.18
+// @version     2019.03.01
 // @namespace   BWARC
 // @description Ce script analyse les combats sur Blood Wars.
-// @copyright   2012-2017, Ecilam
+// @copyright   2012-2019, Ecilam
 // @license     GPL version 3 ou suivantes; http://www.gnu.org/copyleft/gpl.html
 // @homepageURL https://github.com/Ecilam/BloodWarsAnalyseRC
 // @supportURL  https://github.com/Ecilam/BloodWarsAnalyseRC/issues
@@ -16,6 +16,9 @@
 // @grant       GM_getValue
 // @grant       GM_setValue
 // ==/UserScript==
+/* TODO
+- format abrégé des nombres
+*/
 (function ()
 {
   "use strict";
@@ -348,10 +351,10 @@ if (debug) console.debug('BWARCset :', key, val);
   {
     var locStr = { // key:[français,anglais,polonais]
       //DATAS
-      "sDeconnecte": ["Vous avez été déconnecté en raison d`une longue inactivité.",
+      "sDeconnecte": ["Vous avez été déconnecté en raison d’une longue inactivité.",
 			"You have been logged out because of inactivity.",
 			"Nastąpiło wylogowanie z powodu zbyt długiej bezczynności."],
-      "sCourtePause": ["Une courte pause est en court en raison de l`actualisation du classement général",
+      "sCourtePause": ["Une courte pause est en court en raison de l’actualisation du classement général",
 			"Please wait a moment while the rankings are being updated.",
 			"Trwa przerwa związana z aktualizacją rankingu gry."],
       //INIT
@@ -377,15 +380,15 @@ if (debug) console.debug('BWARCset :', key, val);
       "sRCRight1": ["^<b[^<>]*>([^<>]+)<\\/b> obtient des dommages de <b[^<>]*>(\\d+)<\\/b> PTS DE VIE\\.$",
 					"^<b[^<>]*>([^<>]+)<\\/b> takes <b[^<>]*>(\\d+)<\\/b> damage\\.$",
 					"^<b[^<>]*>([^<>]+)<\\/b> zostaje (?:zraniony|zraniona) za <b[^<>]*>(\\d+)<\\/b> PKT ŻYCIA\\.$"],
-      "sRCRight2": ["^<b[^<>]*>([^<>]+)<\\/b> (?:évite le coup|n`a pas été touché(?:e|))\\.$",
+      "sRCRight2": ["^<b[^<>]*>([^<>]+)<\\/b> (?:évite le coup|n’a pas été touché(?:e|))\\.$",
 					"^<b[^<>]*>([^<>]+)<\\/b> (?:dodges the strike|is not hit)\\.$",
 					"^<b[^<>]*>([^<>]+)<\\/b> (?:unika ciosu|nie zostaje trafion(?:y|a))\\.$"],
-      "sRCRight3": ["^<b[^<>]*>([^<>]+)<\\/b> (?:effectue une série d`esquives et évite la frappe|prend <b>la Forme Astrale<\\/b> et évite les dégâts)\\.$", // Zulchequon prend la Forme Astrale et évite les dégâts.
+      "sRCRight3": ["^<b[^<>]*>([^<>]+)<\\/b> (?:effectue une série d’esquives et évite la frappe|prend <b>la Forme Astrale<\\/b> et évite les dégâts)\\.$", // Zulchequon prend la Forme Astrale et évite les dégâts.
 					"^<b[^<>]*>([^<>]+)<\\/b> performs a series of feints and dodges the strike\\.$",
 					"^<b[^<>]*>([^<>]+)<\\/b> wykonuje serię zwodów i unika trafienia\\.$"],
-      "sRCRight4": ["^attaque touche l`(Illusion d`Hallucinateur)$",
-					"^attaque touche l`(Illusion d`Hallucinateur)$", // à traduire
-					"^attaque touche l`(Illusion d`Hallucinateur)$"],
+      "sRCRight4": ["^attaque touche l’(Illusion d’Hallucinateur)$",
+					"^attaque touche l’(Illusion d’Hallucinateur)$", // à traduire
+					"^attaque touche l’(Illusion d’Hallucinateur)$"],
       "sRCCrit": ["un coup critique", "strikes critically", "cios krytyczny"],
       "sRCHeal": ["^(?:Une force miraculeuse fait que |)<b[^<>]*>([^<>]+)<\\/b> regagne <b[^<>]*>(\\d+)<\\/b> PTS DE VIE\\.$",
 					"^(?:A miraculous power makes |)<b[^<>]*>([^<>]+)<\\/b> regenerate[s]? <b[^<>]*>(\\d+)<\\/b> HP\\.$",
@@ -1121,7 +1124,7 @@ if (debug) console.debug('BWARCset :', key, val);
                         var right1 = new RegExp(L.get('sRCRight1')).exec(r[2]);
                         var right2 = new RegExp(L.get('sRCRight2')).exec(r[2]);
                         var right3 = new RegExp(L.get('sRCRight3')).exec(r[2]);
-                        var right4 = new RegExp(L.get('sRCRight4')).exec(r[2]); // Illusion d`Hallucinateur
+                        var right4 = new RegExp(L.get('sRCRight4')).exec(r[2]); // Illusion d’Hallucinateur
                         if (right1 !== null || right2 !== null || right3 !== null || right4 !== null)
                         {
                           if (right4 !== null && !exist(list[k][right4[1]]))
