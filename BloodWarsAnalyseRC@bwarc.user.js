@@ -1,24 +1,25 @@
 // coding: utf-8 (sans BOM)
 // ==UserScript==
-// @author      Ecilam
 // @name        Blood Wars Analyse RC
-// @version     2019.03.01
+// @author      Ecilam
+// @version     2022.11.28
 // @namespace   BWARC
 // @description Ce script analyse les combats sur Blood Wars.
-// @copyright   2012-2019, Ecilam
+// @copyright   2012-2022, Ecilam
 // @license     GPL version 3 ou suivantes; http://www.gnu.org/copyleft/gpl.html
 // @homepageURL https://github.com/Ecilam/BloodWarsAnalyseRC
 // @supportURL  https://github.com/Ecilam/BloodWarsAnalyseRC/issues
+// @match       https://*.bloodwars.net/*
+// @match       https://*.bloodwars.interia.pl/*
+// @grant       GM_getValue
+// @grant       GM_setValue
+// ==/UserScript==
+
+// Include remplacé par Match suite préconisation
 // @include     /^https:\/\/r[0-9]*\.fr\.bloodwars\.net\/.*$/
 // @include     /^https:\/\/r[0-9]*\.bloodwars\.net\/.*$/
 // @include     /^https:\/\/r[0-9]*\.bloodwars\.interia\.pl\/.*$/
 // @include     /^https:\/\/beta[0-9]*\.bloodwars\.net\/.*$/
-// @grant       GM_getValue
-// @grant       GM_setValue
-// ==/UserScript==
-/* TODO
-- format abrégé des nombres
-*/
 (function ()
 {
   "use strict";
@@ -149,7 +150,6 @@
        */
       set: function (key, val)
       {
-if (debug) console.debug('BWARCset :', key, val);
         GM_setValue(key, Jsons.encode(val));
         return val;
       }
@@ -759,14 +759,11 @@ if (debug) console.debug('BWARCset :', key, val);
   /******************************************************
    * FUNCTIONS
    ******************************************************/
-  function formatToUnits(num, precision) {
-    const abbrev = ['', 'k', 'm', 'b', 't'];
-    const unrangifiedOrder = Math.floor(Math.log10(Math.abs(num)) / 3)
-    const order = Math.max(0, Math.min(unrangifiedOrder, abbrev.length -1 ))
-    const suffix = abbrev[order];
-
-    return (num / Math.pow(10, order * 3)).toFixed(precision) + suffix;
+  function NbFormat(num) {
+    const formater = new Intl.NumberFormat(undefined, {notation: "compact", compactDisplay: "short"});
+    return formater.format(num).replace(/\s/g,'');
   }
+  
   function AnalyseRC()
   {
     function CreateOverlib(e, i)
@@ -953,10 +950,17 @@ if (debug) console.debug('BWARCset :', key, val);
           var v2 = rootIU[idx + 'td' + j + '_1'].textContent.trim().toLowerCase();
           if (tri[0] !== 1)
           {
-            var r1 = new RegExp(L.get('sTriNb1')).exec(v);
-            var r2 = new RegExp(L.get('sTriNb2')).exec(v);
-            var r3 = new RegExp(L.get('sTriNb3')).exec(v);
-            v = r1 !== null ? parseFloat(r1[1]) : r2 !== null ? r2[2] !== 0 ? Math.round(r2[1] / r2[2] * 100): 0 : r3 !== null ? Math.round(r3[1]) : Number.POSITIVE_INFINITY;
+            if (exist(rootIU[idx + 'td' + j + '_' + tri[0]].dataset.nb))
+            {
+              v = Number(rootIU[idx + 'td' + j + '_' + tri[0]].dataset.nb);
+            }
+            else
+            {
+              var r1 = new RegExp(L.get('sTriNb1')).exec(v);
+              var r2 = new RegExp(L.get('sTriNb2')).exec(v);
+              var r3 = new RegExp(L.get('sTriNb3')).exec(v);
+              v = r1 !== null ? parseFloat(r1[1]) : r2 !== null ? r2[2] !== 0 ? Math.round(r2[1] / r2[2] * 100): 0 : r3 !== null ? Math.round(r3[1]) : Number.POSITIVE_INFINITY;
+            }
           }
           index.push([v, v2, idx + 'tr' + j]);
         }
@@ -1221,14 +1225,15 @@ if (debug) console.debug('BWARCset :', key, val);
                   {
                     if (list[k].hasOwnProperty(key))
                     {
-                       if (list[k][key][0].cl === 'atkHit')
+                      var data = list[k][key][0];
+                       if (data.cl === 'atkHit')
                       {
-                        totalA += list[k][key][0].dmg;
+                        totalA += data.dmg;
                         deadD += list[k][key].reduce((a, b, c) => c > 0 ? a + b.dead : 0, 0);
                       }
                       else
                       {
-                        totalD += list[k][key][0].dmg;
+                        totalD += data.dmg;
                         deadA += list[k][key].reduce((a, b, c) => c > 0 ? a + b.dead : 0, 0);
                       }
                     }
@@ -1283,27 +1288,28 @@ if (debug) console.debug('BWARCset :', key, val);
               {
                 if (list[k].hasOwnProperty(key))
                 {
-                  var nb = list[k][key][0].hit + list[k][key][0].fail + list[k][key][0].esq;
-                  var nb2 = (list[k][key][0].hit + list[k][key][0].fail);
-                  var nb3 = list[k][key][0].dnb - list[k][key][0].desq;
+                  var data = list[k][key][0];
+                  var nb = data.hit + data.fail + data.esq;
+                  var nb2 = (data.hit + data.fail);
+                  var nb3 = data.dnb - data.desq;
                   DOM.newNodes([
                     [idx + 'tr' + i, 'tr', { 'class': 'BWARCtr' }, [], {}, rootIU[idx + 'tbody']],
-                    [idx + 'td' + i + '_1', 'td', { 'class': (list[k][key][0].cl === 'atkHit' ? 'atkHit' : 'defHit') + ' BWARCleft BWARCbold' }, [key + (list[k][key][0].nb > 1 ? ' x' + list[k][key][0].nb : '')], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_1', 'td', { 'class': (data.cl === 'atkHit' ? 'atkHit' : 'defHit') + ' BWARCleft BWARCbold' }, [key + (data.nb > 1 ? ' x' + data.nb : '')], {}, idx + 'tr' + i],
                     [idx + 'td' + i + '_2', 'td', { 'class': 'atkHit' }, [nb], {}, idx + 'tr' + i],
-                    [idx + 'td' + i + '_3', 'td', { 'class': 'atkHit' }, [list[k][key][0].esq], {}, idx + 'tr' + i],
-                    [idx + 'td' + i + '_4', 'td', { 'class': 'atkHit BWARCleft' }, ['(' + (nb > 0 ? Math.round(list[k][key][0].esq / nb * 100) : 0) + '%)'], {}, idx + 'tr' + i],
-                    [idx + 'td' + i + '_5', 'td', { 'class': 'atkHit' }, [list[k][key][0].hit + '/' + nb2], {}, idx + 'tr' + i],
-                    [idx + 'td' + i + '_6', 'td', { 'class': 'atkHit BWARCleft' }, [' (' + (nb2 > 0 ? Math.round(list[k][key][0].hit / nb2 * 100) : 0) + '%)'], {}, idx + 'tr' + i],
-                    [idx + 'td' + i + '_7', 'td', { 'class': 'atkHit' }, [list[k][key][0].cc + '/' + list[k][key][0].hit], {}, idx + 'tr' + i],
-                    [idx + 'td' + i + '_8', 'td', { 'class': 'atkHit BWARCleft' }, [' (' + (list[k][key][0].hit > 0 ? Math.round(list[k][key][0].cc / list[k][key][0].hit * 100) : 0) + '%)'], {}, idx + 'tr' + i],
-                    [idx + 'td' + i + '_9', 'td', {}, [list[k][key][0].dmg], { 'mouseover': [CreateOverlib2, [k, key]] }, idx + 'tr' + i],
-                    [idx + 'td' + i + '_10', 'td', { 'class': 'defHit' }, [list[k][key][0].dnb], {}, idx + 'tr' + i],
-                    [idx + 'td' + i + '_11', 'td', { 'class': 'defHit' }, [list[k][key][0].desq + '/' + list[k][key][0].dnb], {}, idx + 'tr' + i],
-                    [idx + 'td' + i + '_12', 'td', { 'class': 'defHit BWARCleft' }, [' (' + (list[k][key][0].dnb > 0 ? Math.round(list[k][key][0].desq / list[k][key][0].dnb * 100) : 0) + '%)'], {}, idx + 'tr' + i],
-                    [idx + 'td' + i + '_13', 'td', { 'class': 'defHit' }, [list[k][key][0].dfail + '/'+ nb3], {}, idx + 'tr' + i],
-                    [idx + 'td' + i + '_14', 'td', { 'class': 'defHit BWARCleft' }, [' (' + (nb3 > 0 ? Math.round(list[k][key][0].dfail / nb3 * 100) : 0) + '%)'], {}, idx + 'tr' + i],
-                    [idx + 'td' + i + '_15', 'td', { 'class': 'atkHit' }, [list[k][key][0].pvlost], {}, idx + 'tr' + i],
-                    [idx + 'td' + i + '_16', 'td', { 'class': 'heal' }, [list[k][key][0].pvwin], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_3', 'td', { 'class': 'atkHit' }, [data.esq], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_4', 'td', { 'class': 'atkHit BWARCleft' }, ['(' + (nb > 0 ? Math.round(data.esq / nb * 100) : 0) + '%)'], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_5', 'td', { 'class': 'atkHit' }, [data.hit + '/' + nb2], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_6', 'td', { 'class': 'atkHit BWARCleft' }, [' (' + (nb2 > 0 ? Math.round(data.hit / nb2 * 100) : 0) + '%)'], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_7', 'td', { 'class': 'atkHit' }, [data.cc + '/' + data.hit], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_8', 'td', { 'class': 'atkHit BWARCleft' }, [' (' + (data.hit > 0 ? Math.round(data.cc / data.hit * 100) : 0) + '%)'], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_9', 'td', { 'data-nb': data.dmg }, [NbFormat(data.dmg)], { 'mouseover': [CreateOverlib2, [k, key]] }, idx + 'tr' + i],
+                    [idx + 'td' + i + '_10', 'td', { 'class': 'defHit' }, [data.dnb], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_11', 'td', { 'class': 'defHit' }, [data.desq + '/' + data.dnb], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_12', 'td', { 'class': 'defHit BWARCleft' }, [' (' + (data.dnb > 0 ? Math.round(data.desq / data.dnb * 100) : 0) + '%)'], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_13', 'td', { 'class': 'defHit' }, [data.dfail + '/'+ nb3], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_14', 'td', { 'class': 'defHit BWARCleft' }, [' (' + (nb3 > 0 ? Math.round(data.dfail / nb3 * 100) : 0) + '%)'], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_15', 'td', { 'class': 'atkHit', 'data-nb': data.pvlost }, [NbFormat(data.pvlost)], {}, idx + 'tr' + i],
+                    [idx + 'td' + i + '_16', 'td', { 'class': 'heal', 'data-nb': data.pvwin }, [NbFormat(data.pvwin)], {}, idx + 'tr' + i],
                     [idx + 'td' + i + '_17', 'td', { 'class': 'playerDeath' }, [list[k][key].map((a, b) => b > 0 && a.dead > 0 ? b + (a.dead > 1 ? 'x' + a.dead : '') : '').reduce((a, b) => a + (a !== '' ? b !== '' ? ',' : '' : '') + b, '')], {}, idx + 'tr' + i]
                   ], rootIU);
                   i++;
@@ -1334,13 +1340,14 @@ if (debug) console.debug('BWARCset :', key, val);
               {
                 if (list[k].hasOwnProperty(key))
                 {
+                  var data = list[k][key][0];
                   DOM.newNodes([
                     [idx + 'tr' + i, 'tr', { 'class': 'BWARCtr' }, [], {}, rootIU[idx + 'tbody']],
-                    [idx + 'td' + i + '_1', 'td', { 'class': (list[k][key][0].cl === 'atkHit' ? 'atkHit' : 'defHit') + ' BWARCleft BWARCbold' }, [key + (list[k][key][0].nb > 1 ? ' x' + list[k][key][0].nb : '')], {}, idx + 'tr' + i]
+                    [idx + 'td' + i + '_1', 'td', { 'class': (data.cl === 'atkHit' ? 'atkHit' : 'defHit') + ' BWARCleft BWARCbold' }, [key + (data.nb > 1 ? ' x' + data.nb : '')], {}, idx + 'tr' + i]
                   ], rootIU);
                   for (var j = 2; j < 12; j++)
                   {
-                    if (exist(list[k][key][j-1]) && j-2 < list[k][key][0].dead)
+                    if (exist(list[k][key][j-1]) && j-2 < data.dead)
                     {
                       DOM.newNodes([[idx + 'td' + i + '_' + j, 'th', {}, [list[k][key][j-1].dmg], { 'mouseover': [CreateOverlib, [k, key, j-1]] }, idx + 'tr' + i]], rootIU);
                     }
@@ -1349,7 +1356,7 @@ if (debug) console.debug('BWARCset :', key, val);
                       DOM.newNodes([[idx + 'td' + i + '_' + j, 'th', {}, [], {}, idx + 'tr' + i]], rootIU);
                     }
                   }
-                  DOM.newNodes([[idx + 'td' + i + '_12', 'th', {}, [list[k][key][0].dmg], { 'mouseover': [CreateOverlib, [k, key, 0]] }, idx + 'tr' + i]], rootIU);
+                  DOM.newNodes([[idx + 'td' + i + '_12', 'th', {}, [data.dmg], { 'mouseover': [CreateOverlib, [k, key, 0]] }, idx + 'tr' + i]], rootIU);
                   i++;
                 }
               }
@@ -1378,9 +1385,10 @@ if (debug) console.debug('BWARCset :', key, val);
               {
                 if (list[k].hasOwnProperty(key))
                 {
+                  var data = list[k][key][0];
                   DOM.newNodes([
                     [idx + 'tr' + i, 'tr', { 'class': 'BWARCtr' }, [], {}, rootIU[idx + 'tbody']],
-                    [idx + 'td' + i + '_1', 'td', { 'class': (list[k][key][0].cl === 'atkHit' ? 'atkHit' : 'defHit') + ' BWARCleft BWARCbold' }, [key + (list[k][key][0].nb > 1 ? ' x' + list[k][key][0].nb : '')], {}, idx + 'tr' + i]
+                    [idx + 'td' + i + '_1', 'td', { 'class': (data.cl === 'atkHit' ? 'atkHit' : 'defHit') + ' BWARCleft BWARCbold' }, [key + (data.nb > 1 ? ' x' + data.nb : '')], {}, idx + 'tr' + i]
                   ], rootIU);
                   var init = 0;
                   for (var j = 2; j < 12; j++)
@@ -1389,9 +1397,9 @@ if (debug) console.debug('BWARCset :', key, val);
                     {
                       init += list[k][key][j-1].init;
                     }
-                    DOM.newNodes([[idx + 'td' + i + '_' + j, 'th', {}, [j-2 < list[k][key][0].dead && exist(list[k][key][j-1]) ? exist(list[k][key][j-1].init) ? list[k][key][j-1].init : '∞' : ''], {}, idx + 'tr' + i]], rootIU);
+                    DOM.newNodes([[idx + 'td' + i + '_' + j, 'th', {}, [j-2 < data.dead && exist(list[k][key][j-1]) ? exist(list[k][key][j-1].init) ? list[k][key][j-1].init : '∞' : ''], {}, idx + 'tr' + i]], rootIU);
                   }
-                  DOM.newNodes([[idx + 'td' + i + '_12', 'th', {}, [list[k][key][0].init > 0 ? (init / list[k][key][0].init).toFixed(1) : '∞'], {}, idx + 'tr' + i]], rootIU);
+                  DOM.newNodes([[idx + 'td' + i + '_12', 'th', {}, [data.init > 0 ? (init / data.init).toFixed(1) : '∞'], {}, idx + 'tr' + i]], rootIU);
                   i++;
                 }
               }
