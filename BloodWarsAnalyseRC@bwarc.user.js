@@ -2,15 +2,33 @@
 // ==UserScript==
 // @name        Blood Wars Analyse RC
 // @author      Ecilam
-// @version     2022.11.28
+// @version     2022.12.10
 // @namespace   BWARC
 // @description Ce script analyse les combats sur Blood Wars.
 // @copyright   2012-2022, Ecilam
 // @license     GPL version 3 ou suivantes; http://www.gnu.org/copyleft/gpl.html
 // @homepageURL https://github.com/Ecilam/BloodWarsAnalyseRC
 // @supportURL  https://github.com/Ecilam/BloodWarsAnalyseRC/issues
-// @match       https://*.bloodwars.net/*
-// @match       https://*.bloodwars.interia.pl/*
+// @match       https://r1.bloodwars.net/*
+// @match       https://r2.bloodwars.net/*
+// @match       https://r3.bloodwars.net/*
+// @match       https://r4.bloodwars.net/*
+// @match       https://r1.fr.bloodwars.net/*
+// @match       https://r1.fr.bloodwars.net/*
+// @match       https://r2.fr.bloodwars.net/*
+// @match       https://r3.fr.bloodwars.net/*
+// @match       https://r4.fr.bloodwars.net/*
+// @match       https://r7.fr.bloodwars.net/*
+// @match       https://r8.fr.bloodwars.net/*
+// @match       https://r1.bloodwars.interia.pl/*
+// @match       https://r2.bloodwars.interia.pl/*
+// @match       https://r3.bloodwars.interia.pl/*
+// @match       https://r7.bloodwars.interia.pl/*
+// @match       https://r8.bloodwars.interia.pl/*
+// @match       https://r14.bloodwars.interia.pl/*
+// @match       https://r17.bloodwars.interia.pl/*
+// @match       https://r20.bloodwars.interia.pl/*
+// @match       https://r21.bloodwars.interia.pl/*
 // @grant       GM_getValue
 // @grant       GM_setValue
 // ==/UserScript==
@@ -532,6 +550,8 @@
     var ids = GM.get('BWARC:IDS', {});
     var lastID = GM.get('BWARC:LASTID', null);
     var id = null;
+if (debug) console.debug('BWARC U ids :', ids);
+if (debug) console.debug('BWARC U lastID :', lastID);
     return {
       /**
        * @method init
@@ -544,6 +564,7 @@
         var player = G.playerName();
         var realm = G.royaume();
         var page = G.page();
+if (debug) console.debug('BWARC U init => player, realm, page :', player, realm, page);
         if (!isNull(player) && !isNull(realm) && page === 'pMain')
         {
           var refLink = DOM.getFirstNodeTextContent(
@@ -579,6 +600,7 @@
             pref[i] = exist(prefTmp[i]) ? prefTmp[i] : clone(defPref[i]);
           }
         }
+if (debug) console.debug('BWARC U end => id, lastID, ids :', id, lastID, ids);
         return this;
       },
       /**
