@@ -2,7 +2,7 @@
 // ==UserScript==
 // @name        Blood Wars Analyse RC
 // @author      Ecilam
-// @version     2022.12.10
+// @version     2022.12.17
 // @namespace   BWARC
 // @description Ce script analyse les combats sur Blood Wars.
 // @copyright   2012-2022, Ecilam
@@ -491,7 +491,7 @@
        */
       playerName: function ()
       {
-        return DOM.getFirstNodeTextContent("//div[@class='stats-player']/a[@class='me']", null);
+        return DOM.getFirstNodeTextContent("//div[@class='stats-player']/a[@class='me'] | //div[@class='character']/a[@class='nickNameStats']", null);
       },
       /**
        * @method royaume
@@ -500,7 +500,21 @@
        */
       royaume: function ()
       {
-        return DOM.getFirstNodeTextContent("//div[@class='gameStats']/div[1]/b", null);
+        var a = DOM.getFirstNodeTextContent("//div[@class='gameStats']/div[1]/b | //div[@class='realmName']", null);
+        if (!isNull(a)) a = a.replace(/\n|\r/g,'').trim();
+        return a;
+      },
+      /**
+       * @method id
+       * retourne l'ID du joueur (disponible uniquement sur la Salle du trône)
+       * @return {String|null}
+       */
+      id: function ()
+      {
+        var refLink = DOM.getFirstNodeTextContent(
+              "//div[@id='content-mid']/div[@id='reflink']/span[@class='reflink'] | //div[@class='throneHall_refLink']/span[@class='textToCopy']", null);
+        var ref = !isNull(refLink) ? /r\.php\?r=([0-9]+)/.exec(refLink) : null;
+        return  !isNull(ref) ? ref[1] : null;
       },
       /**
        * @method page
@@ -562,31 +576,35 @@ if (debug) console.debug('BWARC U lastID :', lastID);
       init: function ()
       {
         var player = G.playerName();
-        var realm = G.royaume();
+        var realm = window.location.hostname;
         var page = G.page();
 if (debug) console.debug('BWARC U init => player, realm, page :', player, realm, page);
-        if (!isNull(player) && !isNull(realm) && page === 'pMain')
+        if (!isNull(player) && !isNull(realm))
         {
-          var refLink = DOM.getFirstNodeTextContent(
-            "//div[@id='content-mid']/div[@id='reflink']/span[@class='reflink']", null);
-          if (!isNull(refLink))
+          if (page === 'pMain')
           {
-            var ref = /r\.php\?r=([0-9]+)/.exec(refLink);
+            var ref = G.id();
             if (!isNull(ref))
             {
-              for (var i in ids)
+if (debug) console.debug('BWARC U init => ref :', ref);
+            /*  for (var i in ids)
               {
                 if (ids[i] === ref[1]) delete ids[i]; // en cas de changement de nom
-              }
-              ids[realm + ':' + player] = ref[1];
+              }*/
+              id = realm + ':' + ref;
+              ids[realm + ':' + player] = ref;
               GM.set('BWARC:IDS', ids);
-              lastID = GM.set('BWARC:LASTID', realm + ':' + ref[1]);
+              lastID = GM.set('BWARC:LASTID', id);
             }
           }
-        }
-        if (!isNull(player) && !isNull(realm) && exist(ids[realm + ':' + player]))
-        {
-          id = realm + ':' + ids[realm + ':' + player];
+          else
+          {
+            if (exist(ids[realm + ':' + player]))
+            {
+              id = realm + ':' + ids[realm + ':' + player];
+              lastID = GM.set('BWARC:LASTID', id);
+            }
+          }
         }
         else if (!isNull(lastID))
         {
@@ -599,6 +617,10 @@ if (debug) console.debug('BWARC U init => player, realm, page :', player, realm,
           {
             pref[i] = exist(prefTmp[i]) ? prefTmp[i] : clone(defPref[i]);
           }
+        }
+        else
+        {
+          pref = clone(defPref);
         }
 if (debug) console.debug('BWARC U end => id, lastID, ids :', id, lastID, ids);
         return this;
@@ -658,7 +680,7 @@ if (debug) console.debug('BWARC U end => id, lastID, ids :', id, lastID, ids);
         if (exist(pref[key]))
         {
           pref[key] = clone(val);
-          GM.set('BWARC:O:' + id, pref);
+          if (!isNull(id)) GM.set('BWARC:O:' + id, pref);
           return val;
         }
         else
@@ -677,7 +699,7 @@ if (debug) console.debug('BWARC U end => id, lastID, ids :', id, lastID, ids);
         if (exist(pref[key]))
         {
           pref[key] = defPref[key];
-          GM.set('BWARC:O:' + id, pref);
+          if (!isNull(id)) GM.set('BWARC:O:' + id, pref);
           return clone(pref[key]);
         }
         else
@@ -693,7 +715,7 @@ if (debug) console.debug('BWARC U end => id, lastID, ids :', id, lastID, ids);
       razAllP: function ()
       {
         pref = defPref;
-        GM.set('BWARC:O:' + id, pref);
+        if (!isNull(id)) GM.set('BWARC:O:' + id, pref);
       },
       /**
        * @method getD
