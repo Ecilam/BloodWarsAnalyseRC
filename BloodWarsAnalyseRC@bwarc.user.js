@@ -2,7 +2,7 @@
 // ==UserScript==
 // @name        Blood Wars Analyse RC
 // @author      Ecilam
-// @version     2022.12.17
+// @version     2023.01.18
 // @namespace   BWARC
 // @description Ce script analyse les combats sur Blood Wars.
 // @copyright   2012-2022, Ecilam
@@ -398,15 +398,15 @@
       "sRCRight1": ["^<b[^<>]*>([^<>]+)<\\/b> obtient des dommages de <b[^<>]*>(\\d+)<\\/b> PTS DE VIE\\.$",
 					"^<b[^<>]*>([^<>]+)<\\/b> takes <b[^<>]*>(\\d+)<\\/b> damage\\.$",
 					"^<b[^<>]*>([^<>]+)<\\/b> zostaje (?:zraniony|zraniona) za <b[^<>]*>(\\d+)<\\/b> PKT ŻYCIA\\.$"],
-      "sRCRight2": ["^<b[^<>]*>([^<>]+)<\\/b> (?:évite le coup|n’a pas été touché(?:e|))\\.$",
+      "sRCRight2": ["^<b[^<>]*>([^<>]+)<\\/b> (?:évite le coup|n(?:’|`)a pas été touché(?:e|))\\.$",
 					"^<b[^<>]*>([^<>]+)<\\/b> (?:dodges the strike|is not hit)\\.$",
 					"^<b[^<>]*>([^<>]+)<\\/b> (?:unika ciosu|nie zostaje trafion(?:y|a))\\.$"],
-      "sRCRight3": ["^<b[^<>]*>([^<>]+)<\\/b> (?:effectue une série d’esquives et évite la frappe|prend <b>la Forme Astrale<\\/b> et évite les dégâts)\\.$", // Zulchequon prend la Forme Astrale et évite les dégâts.
+      "sRCRight3": ["^<b[^<>]*>([^<>]+)<\\/b> (?:effectue une série d(?:’|`)esquives et évite la frappe|prend <b>la Forme Astrale<\\/b> et évite les dégâts)\\.$", // Zulchequon prend la Forme Astrale et évite les dégâts.
 					"^<b[^<>]*>([^<>]+)<\\/b> performs a series of feints and dodges the strike\\.$",
 					"^<b[^<>]*>([^<>]+)<\\/b> wykonuje serię zwodów i unika trafienia\\.$"],
-      "sRCRight4": ["^attaque touche l’(Illusion d’Hallucinateur)$",
-					"^attaque touche l’(Illusion d’Hallucinateur)$", // à traduire
-					"^attaque touche l’(Illusion d’Hallucinateur)$"],
+      "sRCRight4": ["^attaque touche l(?:’|`)(Illusion d(?:’|`)Hallucinateur)$",
+					"^attaque touche l(?:’|`)(Illusion d(?:’|`)Hallucinateur)$", // à traduire
+					"^attaque touche l(?:’|`)(Illusion d(?:’|`)Hallucinateur)$"],
       "sRCCrit": ["un coup critique", "strikes critically", "cios krytyczny"],
       "sRCHeal": ["^(?:Une force miraculeuse fait que |)<b[^<>]*>([^<>]+)<\\/b> regagne <b[^<>]*>(\\d+)<\\/b> PTS DE VIE\\.$",
 					"^(?:A miraculous power makes |)<b[^<>]*>([^<>]+)<\\/b> regenerate[s]? <b[^<>]*>(\\d+)<\\/b> HP\\.$",
